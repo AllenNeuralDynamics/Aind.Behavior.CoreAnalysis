@@ -14,6 +14,7 @@ dynamic = ["version", "readme"]
 
 dependencies = [
     'harp-python==0.2.0',
+    'pynwb==2.6.0',
 ]
 
 [project.optional-dependencies]
