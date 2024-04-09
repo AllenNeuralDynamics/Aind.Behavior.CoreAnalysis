@@ -5,9 +5,7 @@
 
 A repository with core primitives for analysis shared across all `Aind.Behavior` tasks
 
-This repository is part of a bigger infrastructure summarized below:
-
-![Dependency Tree](https://raw.githubusercontent.com/AllenNeuralDynamics/Aind.Behavior.Services/main/assets/dependency_tree.drawio.svg)
+This repository is part of a bigger infrastructure that is summarized [here](https://github.com/AllenNeuralDynamics/Aind.Behavior.Services).
 
 ## Installing and Upgrading
 
