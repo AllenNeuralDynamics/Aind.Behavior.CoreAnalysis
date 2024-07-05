@@ -26,8 +26,6 @@ TData = TypeVar("TData", bound=Any)
 class DataStream(abc.ABC, Generic[TData]):
     path: Optional[PathLike] = None
     name: Optional[str] = None
-    reader: Optional[Callable[[PathLike], TData]] = None
-    parser: Optional[Callable[[Any], TData]] = None
     auto_load: bool = field(default=False, repr=False)
     _data: Optional[TData] = field(repr=False, default=None)
 
@@ -44,6 +42,16 @@ class DataStream(abc.ABC, Generic[TData]):
 
         if self.auto_load is True:
             self.load()
+
+    @abc.abstractmethod
+    @staticmethod
+    def _reader(path: PathLike) -> TData:
+        pass
+
+    @abc.abstractmethod
+    @staticmethod
+    def _parser(value: Any) -> TData:
+        pass
 
     @property
     def data(self) -> TData:
@@ -66,29 +74,27 @@ class DataStream(abc.ABC, Generic[TData]):
     def parse(cls, value: Any, **kwargs) -> Self:
         """Loads the data stream from a value"""
         ds = cls(**kwargs)
-        if ds.parser:
-            ds._data = ds.parser(value)
+        if ds._parser is not None:
+            ds._data = ds._parser(value)
             return ds
         else:
-            raise NotImplementedError(
-                "A valid .parse() method must be implemented,\
-                    or a parse function must be provided"
-            )
+            raise NotImplementedError("A valid ._parse method must be implemented")
 
     def load_from_file(
-        self, path: Optional[PathLike] = None, reader: Optional[Callable[[PathLike], TData]] = None
-    ) -> TData:
+            self,
+            path: Optional[PathLike] = None,
+            reader: Callable[[PathLike], TData] = _reader) -> TData:
 
-        reader = reader if reader is not None else self.reader
+        reader = reader if reader is not None else self._reader
         path = Path(path) if path is not None else self.path
-        if reader:
+        if reader is not None:
             if path:
                 self._data = reader(path)
                 self.path = path
             else:
                 raise ValueError("self.path is not defined, and no path was provided")
         else:
-            raise ValueError("self.reader is not defined, and no reader was provided")
+            raise ValueError("reader method is not defined")
         return self._data
 
     def __str__(self) -> str:
