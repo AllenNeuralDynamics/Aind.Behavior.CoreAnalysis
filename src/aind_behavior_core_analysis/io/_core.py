@@ -8,7 +8,6 @@ from os import PathLike
 from pathlib import Path
 from typing import (
     Any,
-    Callable,
     Generic,
     List,
     Mapping,
@@ -23,26 +22,46 @@ from typing import (
 TData = TypeVar("TData", bound=Any)
 
 
-@dataclass
 class DataStream(abc.ABC, Generic[TData]):
-    path: Optional[PathLike] = None
-    name: Optional[str] = None
-    auto_load: bool = field(default=False, repr=False)
-    _data: Optional[TData] = field(repr=False, default=None)
 
-    def __post_init__(self) -> None:
+    def __init__(
+        self,
+        path: Optional[PathLike],
+        name: Optional[str] = None,
+        auto_load: bool = False,
+        _data: Optional[TData] = None,
+    ) -> None:
 
-        if self.path:
-            self.path = Path(self.path)
-            if not self.path.is_file():
-                raise FileExistsError(f"Path {self.path} is not a file")
-            self.name = self.name if self.name is not None else self.path.stem
+        self._auto_load = auto_load
+        self._data = _data
+
+        if path is not None:
+            path = Path(path)
+            self._path = path
+            if not self._path.is_file():
+                raise FileExistsError(f"Path {self._path} is not a file")
+            self._name = name if name is not None else path.stem
         else:
-            if self.name is None:
+            if name is None:
                 raise ValueError("Either path or name must be provided")
 
-        if self.auto_load is True:
+        if self._auto_load is True:
             self.load()
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def path(self) -> Optional[Path]:
+        return self._path
+
+    @path.setter
+    def path(self, value: PathLike) -> None:
+        _path = Path(value)
+        if not _path.is_file():
+            raise FileExistsError(f"Path {self._path} is not a file")
+        self._path = Path(value)
 
     @classmethod
     @abc.abstractmethod
@@ -70,21 +89,16 @@ class DataStream(abc.ABC, Generic[TData]):
             )
         return self._data
 
-    def load(
-        self, path: Optional[PathLike] = None, reader: Callable[[Any], TData] = _reader, force_reload: bool = False
-    ) -> TData:
+    def load(self, path: Optional[PathLike] = None, force_reload: bool = False) -> TData:
 
         if force_reload is False and self._data:
             pass
         else:
-            reader = reader if reader is not None else self._reader
             path = Path(path) if path is not None else self.path
-            if reader is not None:
-                if path:
-                    self.path = path
-                    self._data = reader(self._file_reader(path))
-                else:
-                    raise ValueError("self.path is not defined, and no path was provided")
+            if path:
+                self.path = path
+                self._data = self._reader(self._file_reader(path))
+
             else:
                 raise ValueError("reader method is not defined")
         return self._data
@@ -100,10 +114,7 @@ class DataStream(abc.ABC, Generic[TData]):
             raise NotImplementedError("A valid ._parse method must be implemented")
 
     def __str__(self) -> str:
-        return f"{self.__class__.__name__} stream with data {'' if self._data else 'not '} loaded."
-
-    def __repr__(self) -> str:
-        return self.__str__()
+        return f"{self.__class__.__name__} stream with data{'' if self._data is not None else 'not'} loaded."
 
 
 StrPattern = NewType("StrPattern", str)
