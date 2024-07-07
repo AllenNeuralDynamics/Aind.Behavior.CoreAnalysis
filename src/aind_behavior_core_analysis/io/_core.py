@@ -17,6 +17,7 @@ from typing import (
     Self,
     Type,
     TypeVar,
+    Union,
 )
 
 TData = TypeVar("TData", bound=Any)
@@ -43,14 +44,19 @@ class DataStream(abc.ABC, Generic[TData]):
         if self.auto_load is True:
             self.load()
 
+    @classmethod
     @abc.abstractmethod
-    @staticmethod
-    def _reader(path: PathLike) -> TData:
+    def _file_reader(cls, path: PathLike):
         pass
 
+    @classmethod
     @abc.abstractmethod
-    @staticmethod
-    def _parser(value: Any) -> TData:
+    def _reader(cls, value) -> TData:
+        pass
+
+    @classmethod
+    @abc.abstractmethod
+    def _parser(cls, value: Any) -> TData:
         pass
 
     @property
@@ -64,11 +70,24 @@ class DataStream(abc.ABC, Generic[TData]):
             )
         return self._data
 
-    def load(self, force_reload: bool = False) -> TData:
+    def load(
+        self, path: Optional[PathLike] = None, reader: Callable[[Any], TData] = _reader, force_reload: bool = False
+    ) -> TData:
+
         if force_reload is False and self._data:
-            return self.data
+            pass
         else:
-            return self.load_from_file()
+            reader = reader if reader is not None else self._reader
+            path = Path(path) if path is not None else self.path
+            if reader is not None:
+                if path:
+                    self.path = path
+                    self._data = reader(self._file_reader(path))
+                else:
+                    raise ValueError("self.path is not defined, and no path was provided")
+            else:
+                raise ValueError("reader method is not defined")
+        return self._data
 
     @classmethod
     def parse(cls, value: Any, **kwargs) -> Self:
@@ -80,23 +99,6 @@ class DataStream(abc.ABC, Generic[TData]):
         else:
             raise NotImplementedError("A valid ._parse method must be implemented")
 
-    def load_from_file(
-            self,
-            path: Optional[PathLike] = None,
-            reader: Callable[[PathLike], TData] = _reader) -> TData:
-
-        reader = reader if reader is not None else self._reader
-        path = Path(path) if path is not None else self.path
-        if reader is not None:
-            if path:
-                self._data = reader(path)
-                self.path = path
-            else:
-                raise ValueError("self.path is not defined, and no path was provided")
-        else:
-            raise ValueError("reader method is not defined")
-        return self._data
-
     def __str__(self) -> str:
         return f"{self.__class__.__name__} stream with data {'' if self._data else 'not '} loaded."
 
@@ -107,7 +109,7 @@ class DataStream(abc.ABC, Generic[TData]):
 StrPattern = NewType("StrPattern", str)
 
 
-def validate_str_pattern(pattern: StrPattern | List[StrPattern]) -> None:
+def validate_str_pattern(pattern: Union[StrPattern, List[StrPattern]]) -> None:
     if isinstance(pattern, list):
         for pat in pattern:
             validate_str_pattern(pat)
@@ -126,7 +128,7 @@ class DataStreamSource:
         self,
         path: PathLike,
         name: Optional[str] = None,
-        data_stream_map: Type[DataStream] | Mapping[Type[DataStream], StrPattern] = DataStream,
+        data_stream_map: Union[Type[DataStream], Mapping[Type[DataStream], StrPattern]] = DataStream,
         auto_load: bool = False,
     ) -> None:
 
