@@ -29,10 +29,8 @@ from aind_behavior_core_analysis.io._core import (
 
 DataFrameOrSeries = Union[pd.DataFrame, pd.Series]
 
-TInnerParser = TypeVar("TInnerParser", None, BaseModel)
 
-
-class SoftwareEventStream(DataStream[DataFrameOrSeries], Generic[TInnerParser]):
+class SoftwareEventStream(DataStream[DataFrameOrSeries]):
     """Represents a generic Software event."""
 
     def __init__(
@@ -41,11 +39,12 @@ class SoftwareEventStream(DataStream[DataFrameOrSeries], Generic[TInnerParser]):
         *,
         name: Optional[str] = None,
         auto_load: bool = False,
-        inner_parser: Optional[TInnerParser] = None,
+        inner_parser: Optional[BaseModel] = None,
         **kwargs
     ) -> None:
-        super().__init__(path, name=name, auto_load=auto_load, **kwargs)
-        self._inner_parser: Optional[TInnerParser] = inner_parser
+        super().__init__(path, name=name, auto_load=False, **kwargs)
+        self._inner_parser = inner_parser
+        self._run_auto_load(auto_load)
 
     def load(self, path: Optional[PathLike] = None, *, force_reload: bool = False, **kwargs) -> DataFrameOrSeries:
         super().load(path, force_reload=force_reload, **kwargs)
@@ -84,10 +83,6 @@ class SoftwareEventStream(DataStream[DataFrameOrSeries], Generic[TInnerParser]):
 
         return df
 
-    @classmethod
-    def _parser(cls, value, *args, **kwargs) -> DataFrameOrSeries:
-        return cls._reader(value, *args, **kwargs)
-
     def _apply_inner_parser(self, df: pd.DataFrame) -> pd.DataFrame:
         if self._inner_parser is None:
             pass
@@ -111,7 +106,8 @@ class CsvStream(DataStream[DataFrameOrSeries]):
         auto_load: bool = False,
         **kwargs
     ) -> None:
-        super().__init__(path, name=name, auto_load=auto_load, **kwargs)
+        super().__init__(path, name=name, auto_load=False, **kwargs)
+        self._run_auto_load(auto_load)
 
     @classmethod
     def _file_reader(cls, path, *args, **kwargs) -> str:
@@ -137,6 +133,46 @@ class CsvStream(DataStream[DataFrameOrSeries]):
             names=col_names)
         return df
 
+
+class SingletonStream(DataStream[str | BaseModel]):
+    """Represents a generic Software event."""
+
+    def __init__(
+        self,
+        path: Optional[PathLike],
+        *,
+        name: Optional[str] = None,
+        auto_load: bool = False,
+        inner_parser: Optional[BaseModel] = None,
+        **kwargs
+    ) -> None:
+        super().__init__(path, name=name, auto_load=False, **kwargs)
+        self._inner_parser = inner_parser
+        self._run_auto_load(auto_load)
+
     @classmethod
-    def _parser(cls, value, *args, **kwargs) -> DataFrameOrSeries:
-        return cls._reader(value, *args, **kwargs)
+    def _file_reader(cls, path, *args, **kwargs) -> str:
+        with open(path, "r+", encoding="utf-8") as f:
+            return f.read()
+
+    @classmethod
+    def _reader(cls, value, *args, **kwargs) -> str:
+        return value
+
+    def load(self, path: Optional[PathLike] = None, *, force_reload: bool = False, **kwargs) -> str | BaseModel:
+        super().load(path, force_reload=force_reload, **kwargs)
+        self._data = self._apply_inner_parser(self._data)
+        return self._data
+
+    def _apply_inner_parser(self, value: Optional[str | BaseModel]) -> str | BaseModel:
+        if value is None:
+            raise ValueError("Data can not be None")
+        if self._inner_parser is None:
+            return value
+        else:
+            if isinstance(value, str):
+                return self._inner_parser.model_validate_json(value)
+            elif isinstance(value, BaseModel):
+                return self._inner_parser.model_validate(value.model_dump())
+            else:
+                raise TypeError("Invalid type")

@@ -47,8 +47,14 @@ class DataStream(abc.ABC, Generic[TData]):
             if name is None:
                 raise ValueError("Either path or name must be provided")
 
-        if self._auto_load is True:
+        self._run_auto_load(auto_load)
+
+    def _run_auto_load(self, override_to: bool) -> None:
+        if override_to is True:
+            self._auto_load = True
             self.load()
+        else:
+            pass  # Defer decision to the child class
 
     @property
     def name(self) -> str:
@@ -75,11 +81,6 @@ class DataStream(abc.ABC, Generic[TData]):
     def _reader(cls, value, *args, **kwargs) -> TData:
         pass
 
-    @classmethod
-    @abc.abstractmethod
-    def _parser(cls, value: Any, *args, **kwargs) -> TData:
-        pass
-
     @property
     def data(self) -> TData:
         """Returns the data"""
@@ -104,16 +105,6 @@ class DataStream(abc.ABC, Generic[TData]):
             else:
                 raise ValueError("reader method is not defined")
         return self._data
-
-    @classmethod
-    def parse(cls, value: Any, **kwargs) -> Self:
-        """Loads the data stream from a value"""
-        ds = cls(**kwargs)
-        if ds._parser is not None:
-            ds._data = ds._parser(value)
-            return ds
-        else:
-            raise NotImplementedError("A valid ._parse method must be implemented")
 
     def __str__(self) -> str:
         return f"{self.__class__.__name__} stream with data{'' if self._data is not None else 'not'} loaded."
