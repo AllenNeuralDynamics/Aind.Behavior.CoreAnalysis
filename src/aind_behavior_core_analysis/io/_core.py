@@ -27,9 +27,11 @@ class DataStream(abc.ABC, Generic[TData]):
     def __init__(
         self,
         path: Optional[PathLike],
+        *,
         name: Optional[str] = None,
         auto_load: bool = False,
         _data: Optional[TData] = None,
+        **kwargs
     ) -> None:
 
         self._auto_load = auto_load
@@ -65,17 +67,17 @@ class DataStream(abc.ABC, Generic[TData]):
 
     @classmethod
     @abc.abstractmethod
-    def _file_reader(cls, path: PathLike):
+    def _file_reader(cls, path: PathLike, *args, **kwargs) -> Any:
         pass
 
     @classmethod
     @abc.abstractmethod
-    def _reader(cls, value) -> TData:
+    def _reader(cls, value, *args, **kwargs) -> TData:
         pass
 
     @classmethod
     @abc.abstractmethod
-    def _parser(cls, value: Any) -> TData:
+    def _parser(cls, value: Any, *args, **kwargs) -> TData:
         pass
 
     @property
@@ -89,7 +91,7 @@ class DataStream(abc.ABC, Generic[TData]):
             )
         return self._data
 
-    def load(self, path: Optional[PathLike] = None, force_reload: bool = False) -> TData:
+    def load(self, path: Optional[PathLike] = None, *, force_reload: bool = False, **kwargs) -> TData:
 
         if force_reload is False and self._data:
             pass
