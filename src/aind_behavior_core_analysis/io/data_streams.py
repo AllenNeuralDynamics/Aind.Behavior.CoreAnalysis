@@ -1,30 +1,24 @@
 from __future__ import annotations
 import csv
+import io
 import json
 from os import PathLike
 from pathlib import Path
-import io
 from typing import (
-    Any,
-    Callable,
-    Generic,
     List,
     Optional,
-    Protocol,
-    Type,
-    TypeVar,
     Union,
 )
 
+import harp
 import pandas as pd
-from aind_behavior_services.data_types import RenderSynchState, SoftwareEvent
-from pydantic import BaseModel, TypeAdapter
+from aind_behavior_services.data_types import SoftwareEvent
+from harp.reader import RegisterReader
+from pydantic import BaseModel
+from typing_extensions import override
 
 from aind_behavior_core_analysis.io._core import (
     DataStream,
-    DataStreamSource,
-    StreamCollection,
-    TData,
 )
 
 DataFrameOrSeries = Union[pd.DataFrame, pd.Series]
@@ -40,7 +34,7 @@ class SoftwareEventStream(DataStream[DataFrameOrSeries]):
         name: Optional[str] = None,
         auto_load: bool = False,
         inner_parser: Optional[BaseModel] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         super().__init__(path, name=name, auto_load=False, **kwargs)
         self._inner_parser = inner_parser
@@ -64,7 +58,7 @@ class SoftwareEventStream(DataStream[DataFrameOrSeries]):
         validate: bool = True,
         pydantic_validate_kwargs: Optional[dict] = None,
         pydantic_model_dump_kwargs: Optional[dict] = None,
-        **kwargs
+        **kwargs,
     ) -> DataFrameOrSeries:
         if not isinstance(value, list):
             value = [value]
@@ -99,12 +93,7 @@ class CsvStream(DataStream[DataFrameOrSeries]):
     """Represents a generic Software event."""
 
     def __init__(
-        self,
-        path: Optional[PathLike],
-        *,
-        name: Optional[str] = None,
-        auto_load: bool = False,
-        **kwargs
+        self, path: Optional[PathLike], *, name: Optional[str] = None, auto_load: bool = False, **kwargs
     ) -> None:
         super().__init__(path, name=name, auto_load=False, **kwargs)
         self._run_auto_load(auto_load)
@@ -121,16 +110,12 @@ class CsvStream(DataStream[DataFrameOrSeries]):
         *args,
         infer_index_col: Optional[str | int] = 0,
         col_names: Optional[List[str]] = None,
-        **kwargs
+        **kwargs,
     ) -> DataFrameOrSeries:
 
         has_header = csv.Sniffer().has_header(value)
         _header = 0 if has_header is True else None
-        df = pd.read_csv(
-            io.StringIO(value),
-            header=_header,
-            index_col=infer_index_col,
-            names=col_names)
+        df = pd.read_csv(io.StringIO(value), header=_header, index_col=infer_index_col, names=col_names)
         return df
 
 
@@ -144,7 +129,7 @@ class SingletonStream(DataStream[str | BaseModel]):
         name: Optional[str] = None,
         auto_load: bool = False,
         inner_parser: Optional[BaseModel] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         super().__init__(path, name=name, auto_load=False, **kwargs)
         self._inner_parser = inner_parser
@@ -176,3 +161,45 @@ class SingletonStream(DataStream[str | BaseModel]):
                 return self._inner_parser.model_validate(value.model_dump())
             else:
                 raise TypeError("Invalid type")
+
+
+class HarpRegisterStream(DataStream[DataFrameOrSeries]):
+
+    def __init__(
+        self,
+        path: Optional[PathLike],
+        *,
+        name: Optional[str] = None,
+        auto_load: bool = False,
+        register_reader: Optional[RegisterReader] = None,
+        **kwargs,
+    ) -> None:
+        super().__init__(path, name=name, auto_load=False, **kwargs)
+        self._register_reader = register_reader
+        self._run_auto_load(auto_load)
+
+    @classmethod
+    def _file_reader(cls, path, *args, **kwargs) -> bytes:
+        with open(path, "rb") as f:
+            return f.read()
+
+    @classmethod
+    def _reader(cls, *args, **kwargs) -> DataFrameOrSeries:
+        return harp.read(*args, **kwargs)
+
+    @override
+    def load(self, path: Optional[PathLike] = None, *, force_reload: bool = False, **kwargs) -> DataFrameOrSeries:
+        if force_reload is False and self._data:
+            pass
+        else:
+            path = Path(path) if path is not None else self.path
+            if path:
+                self.path = path
+                if self._register_reader is None:
+                    self._data = self._reader(path)
+                else:
+                    self._data = self._register_reader.read(keep_type=True)
+
+            else:
+                raise ValueError("reader method is not defined")
+        return self._data

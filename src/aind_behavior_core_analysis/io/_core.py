@@ -3,7 +3,6 @@ from __future__ import annotations
 import abc
 import re
 from collections import UserDict
-from dataclasses import dataclass, field
 from os import PathLike
 from pathlib import Path
 from typing import (
@@ -13,7 +12,6 @@ from typing import (
     Mapping,
     NewType,
     Optional,
-    Self,
     Type,
     TypeVar,
     Union,
@@ -31,7 +29,7 @@ class DataStream(abc.ABC, Generic[TData]):
         name: Optional[str] = None,
         auto_load: bool = False,
         _data: Optional[TData] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
 
         self._auto_load = auto_load
