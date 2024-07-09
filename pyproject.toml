@@ -27,7 +27,8 @@ linters = [
     'coverage',
     'flake8',
     'interrogate',
-    'isort'
+    'isort',
+    'mypy',
 ]
 
 
@@ -38,9 +39,14 @@ where = ["src"]
 version = {attr = "aind_behavior_core_analysis.__version__"}
 readme = {file = ["README.md"]}
 
+[tool.mypy]
+enable_incomplete_feature = ["Unpack"]
+plugins = [
+    "pydantic.mypy",
+]
+
 [tool.black]
 line-length = 120
-target_version = ['py311']
 exclude = '''
 
 (

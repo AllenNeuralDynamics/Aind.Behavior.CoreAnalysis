@@ -1,11 +1,25 @@
 from __future__ import annotations
 
 import abc
-import re
 from collections import UserDict
 from os import PathLike
 from pathlib import Path
-from typing import Any, Generic, List, Mapping, NewType, Optional, Type, TypeVar, Union, overload, Protocol, Sequence, Tuple
+from typing import (
+    Any,
+    Generic,
+    List,
+    Optional,
+    Type,
+    TypeVar,
+    overload,
+    Sequence,
+    Tuple,
+    TypedDict,
+    Unpack,
+    NotRequired,
+)
+
+from aind_behavior_core_analysis.io._utils import StrPattern, validate_str_pattern
 
 TData = TypeVar("TData", bound=Any)
 
@@ -98,23 +112,30 @@ class DataStream(abc.ABC, Generic[TData]):
         return f"{self.__class__.__name__} stream with data{'' if self._data is not None else 'not'} loaded."
 
 
-StrPattern = Union[str, Sequence[str]]
+class DataStreamSourceBuilder(abc.ABC):
 
-def validate_str_pattern(pattern: StrPattern) -> bool:
-    if isinstance(pattern, Sequence):
-        for pat in pattern:
-            validate_str_pattern(pat)
-    else:
-        try:
-            re.compile(pattern)
-        except re.error as err:
-            raise re.error(f"Pattern {pattern} is not a valid regex pattern") from err
+    class _BuilderInput(TypedDict, total=False):
+        bar: str
 
-
-class DataStreamSourceBuilder(Protocol):
     @abc.abstractmethod
-    def build(self) -> DataStreamSource:
-        pass
+    def build(self, **build_kwargs: Unpack[_BuilderInput]) -> StreamCollection: ...
+
+    @classmethod
+    def parse_kwargs(cls, kwargs: dict[str, Any]) -> _BuilderInput:
+        return cls._BuilderInput(**kwargs)  # type: ignore
+
+
+class HarpDataStreamSourceBuilder(DataStreamSourceBuilder):
+
+    class _BuilderInput(DataStreamSourceBuilder._BuilderInput):
+        foo: NotRequired[int]
+
+    def build(self, **build_kwargs: Unpack[_BuilderInput]) -> StreamCollection:
+        return StreamCollection()
+
+
+DataStreamSourceBuilder().build()
+HarpDataStreamSourceBuilder().build()
 
 
 _SequenceDataStreamBuilderPattern = Sequence[Tuple[Type[DataStream], StrPattern]]
@@ -129,8 +150,10 @@ class DataStreamSource:
         self,
         path: PathLike,
         builder: Type[DataStream],
+        *,
         name: Optional[str] = None,
         auto_load: bool = False,
+        **kwargs,
     ) -> None: ...
 
     @overload
@@ -138,17 +161,21 @@ class DataStreamSource:
         self,
         path: PathLike,
         builder: _SequenceDataStreamBuilderPattern,
+        *,
         name: Optional[str] = None,
         auto_load: bool = False,
+        **kwargs,
     ) -> None: ...
 
     @overload
     def __init__(
         self,
         path: PathLike,
-        builder: Type[DataStreamSourceBuilder],
+        *,
+        builder: DataStreamSourceBuilder,
         name: Optional[str] = None,
         auto_load: bool = False,
+        **kwargs,
     ) -> None: ...
 
     @overload
@@ -156,18 +183,20 @@ class DataStreamSource:
         self,
         path: PathLike,
         builder: None,
+        *,
         name: Optional[str] = None,
         auto_load: bool = False,
+        **kwargs,
     ) -> None: ...
 
     def __init__(
         self,
         path: PathLike,
-        builder: (
-            None | Type[DataStream] | _SequenceDataStreamBuilderPattern | Type[DataStreamSourceBuilder]
-        ) = None,
+        builder: None | Type[DataStream] | _SequenceDataStreamBuilderPattern | DataStreamSourceBuilder = None,
+        *,
         name: Optional[str] = None,
         auto_load: bool = False,
+        **kwargs,
     ) -> None:
 
         self._streams: StreamCollection
@@ -176,17 +205,16 @@ class DataStreamSource:
         if not self._path.is_dir():
             raise FileExistsError(f"Path {self._path} is not a directory")
         self._name = name if name else self._path.name
-    
-        # TODO Support automatic inference in the future
+
+        #  Build the StreamCollection object
         self._builder = builder
 
         if self._builder is None:
             raise NotImplementedError(
                 "builder must not be provided. Support for automatic inference is not yet implemented."
             )
-
-        if isinstance(self._builder, type(DataStreamSourceBuilder)):
-            raise NotImplementedError(" Implement from DataStreamSourceBuilder TODO ")
+        if isinstance(self._builder, DataStreamSourceBuilder):
+            self._streams = self._builder.build(**self._builder.parse_kwargs(kwargs))
 
         elif isinstance(self._builder, type(DataStream)) or isinstance(self._builder, Sequence):
             self._builder = self._normalize_builder_from_data_stream(self._builder)
@@ -225,7 +253,9 @@ class DataStreamSource:
         return self._streams
 
     @staticmethod
-    def _get_data_streams_helper(path: PathLike, stream_type: Type[DataStream], pattern: StrPattern) -> List[DataStream]:
+    def _get_data_streams_helper(
+        path: PathLike, stream_type: Type[DataStream], pattern: StrPattern
+    ) -> List[DataStream]:
         _path = Path(path)
         if isinstance(pattern, str):
             pattern = [pattern]
@@ -265,17 +295,17 @@ class StreamCollection(UserDict[str, DataStream]):
         return f"Streams with {len(self)} streams: \n" + "\n".join(single_streams)
 
     def try_append(self, key: str, value: DataStream) -> None:
-            """
-            Tries to append a key-value pair to the dictionary.
+        """
+        Tries to append a key-value pair to the dictionary.
 
-            Args:
-                key (str): The key to be appended.
-                value (DataStream): The value to be appended.
+        Args:
+            key (str): The key to be appended.
+            value (DataStream): The value to be appended.
 
-            Raises:
-                KeyError: If the key already exists in the dictionary.
-            """
-            if key in self:
-                raise KeyError(f"Key {key} already exists in dictionary")
-            else:
-                self[key] = value
+        Raises:
+            KeyError: If the key already exists in the dictionary.
+        """
+        if key in self:
+            raise KeyError(f"Key {key} already exists in dictionary")
+        else:
+            self[key] = value
