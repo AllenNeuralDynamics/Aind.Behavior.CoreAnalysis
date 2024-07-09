@@ -5,17 +5,7 @@ import re
 from collections import UserDict
 from os import PathLike
 from pathlib import Path
-from typing import (
-    Any,
-    Generic,
-    List,
-    Mapping,
-    NewType,
-    Optional,
-    Type,
-    TypeVar,
-    Union,
-)
+from typing import Any, Generic, List, Mapping, NewType, Optional, Type, TypeVar, Union, overload, Protocol, Sequence, Tuple
 
 TData = TypeVar("TData", bound=Any)
 
@@ -108,11 +98,10 @@ class DataStream(abc.ABC, Generic[TData]):
         return f"{self.__class__.__name__} stream with data{'' if self._data is not None else 'not'} loaded."
 
 
-StrPattern = NewType("StrPattern", str)
+StrPattern = Union[str, Sequence[str]]
 
-
-def validate_str_pattern(pattern: Union[StrPattern, List[StrPattern]]) -> None:
-    if isinstance(pattern, list):
+def validate_str_pattern(pattern: StrPattern) -> bool:
+    if isinstance(pattern, Sequence):
         for pat in pattern:
             validate_str_pattern(pat)
     else:
@@ -122,44 +111,104 @@ def validate_str_pattern(pattern: Union[StrPattern, List[StrPattern]]) -> None:
             raise re.error(f"Pattern {pattern} is not a valid regex pattern") from err
 
 
+class DataStreamSourceBuilder(Protocol):
+    @abc.abstractmethod
+    def build(self) -> DataStreamSource:
+        pass
+
+
+_SequenceDataStreamBuilderPattern = Sequence[Tuple[Type[DataStream], StrPattern]]
+
+
 class DataStreamSource:
     """Represents a data stream source, usually comprised of various files from a single folder.
     These folders usually result from a single data acquisition logger"""
 
+    @overload
     def __init__(
         self,
         path: PathLike,
+        builder: Type[DataStream],
         name: Optional[str] = None,
-        data_stream_map: Union[Type[DataStream], Mapping[Type[DataStream], StrPattern]] = DataStream,
+        auto_load: bool = False,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        path: PathLike,
+        builder: _SequenceDataStreamBuilderPattern,
+        name: Optional[str] = None,
+        auto_load: bool = False,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        path: PathLike,
+        builder: Type[DataStreamSourceBuilder],
+        name: Optional[str] = None,
+        auto_load: bool = False,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        path: PathLike,
+        builder: None,
+        name: Optional[str] = None,
+        auto_load: bool = False,
+    ) -> None: ...
+
+    def __init__(
+        self,
+        path: PathLike,
+        builder: (
+            None | Type[DataStream] | _SequenceDataStreamBuilderPattern | Type[DataStreamSourceBuilder]
+        ) = None,
+        name: Optional[str] = None,
         auto_load: bool = False,
     ) -> None:
 
+        self._streams: StreamCollection
         self._path = Path(path)
 
         if not self._path.is_dir():
             raise FileExistsError(f"Path {self._path} is not a directory")
         self._name = name if name else self._path.name
-
+    
         # TODO Support automatic inference in the future
-        self._data_stream_map: Mapping[Type[DataStream], StrPattern]
+        self._builder = builder
 
-        if not data_stream_map:
+        if self._builder is None:
             raise NotImplementedError(
-                "data_stream_map must be provided. Support for automatic inference is not yet implemented"
+                "builder must not be provided. Support for automatic inference is not yet implemented."
             )
 
-        if isinstance(data_stream_map, DataStream):  # If only a single data stream class is provided
-            data_stream_map = {data_stream_map: "*"}
+        if isinstance(self._builder, type(DataStreamSourceBuilder)):
+            raise NotImplementedError(" Implement from DataStreamSourceBuilder TODO ")
 
-        if not isinstance(data_stream_map, Mapping):
-            raise ValueError("data_stream_map must be a Mapping or a DataStream class")
+        elif isinstance(self._builder, type(DataStream)) or isinstance(self._builder, Sequence):
+            self._builder = self._normalize_builder_from_data_stream(self._builder)
+            self._streams = self._build_from_data_stream(self.path, self._builder)
 
-        validate_str_pattern(list(data_stream_map.values()))
-        self._data_stream_map = data_stream_map
-        self._streams = self._get_streams()
+        else:
+            raise TypeError("builder must be a DataStream type or a sequence of DataStream types")
 
         if auto_load is True:
             self.reload_streams()
+
+    @staticmethod
+    def _normalize_builder_from_data_stream(builder: Type[DataStream] | Sequence) -> _SequenceDataStreamBuilderPattern:
+        _builder: Sequence
+        if isinstance(builder, type(DataStream)):  # If only a single data stream class is provided
+            _builder = ((builder, "*"),)
+
+        for _tuple in _builder:
+            if not isinstance(_tuple[0], type(DataStream)):
+                raise ValueError("builder must be a DataStream type")
+            validate_str_pattern(_tuple[1])
+        return _builder
 
     @property
     def name(self) -> str:
@@ -175,24 +224,28 @@ class DataStreamSource:
     def streams(self) -> StreamCollection:
         return self._streams
 
-    def _get_stream_file_paths(self, pattern: str) -> List[Path]:
-        _path = Path(self.path)
-        return list(_path.glob(pattern))
-
-    def _get_streams_from_type(self, stream_type: Type[DataStream], pattern: str) -> List[DataStream]:
-        files = self._get_stream_file_paths(pattern)
+    @staticmethod
+    def _get_data_streams_helper(path: PathLike, stream_type: Type[DataStream], pattern: StrPattern) -> List[DataStream]:
+        _path = Path(path)
+        if isinstance(pattern, str):
+            pattern = [pattern]
+        files: List[Path] = []
+        for pat in pattern:
+            files.extend(_path.glob(pat))
+        files = list(set(files))
         streams: List[DataStream] = [stream_type(file) for file in files]
         return streams
 
-    def _get_streams(self) -> StreamCollection:
+    @classmethod
+    def _build_from_data_stream(cls, path: PathLike, builder: _SequenceDataStreamBuilderPattern) -> StreamCollection:
         streams = StreamCollection()
-        for stream_type, pattern in self._data_stream_map.items():
-            _this_type_stream = self._get_streams_from_type(stream_type, pattern)
+        for stream_type, pattern in builder:
+            _this_type_stream = cls._get_data_streams_helper(path, stream_type, pattern)
             for stream in _this_type_stream:
                 if stream.name is None:
                     raise ValueError(f"Stream {stream} does not have a name")
                 else:
-                    streams.validate_and_append(stream.name, stream)
+                    streams.try_append(stream.name, stream)
         return streams
 
     def reload_streams(self, force_reload: bool = False) -> None:
@@ -211,8 +264,18 @@ class StreamCollection(UserDict[str, DataStream]):
         single_streams = [f"{key}: {value}" for key, value in self.items()]
         return f"Streams with {len(self)} streams: \n" + "\n".join(single_streams)
 
-    def validate_and_append(self, key: str, value: DataStream) -> None:
-        if key in self:
-            raise KeyError(f"Key {key} already exists in dictionary")
-        else:
-            self[key] = value
+    def try_append(self, key: str, value: DataStream) -> None:
+            """
+            Tries to append a key-value pair to the dictionary.
+
+            Args:
+                key (str): The key to be appended.
+                value (DataStream): The value to be appended.
+
+            Raises:
+                KeyError: If the key already exists in the dictionary.
+            """
+            if key in self:
+                raise KeyError(f"Key {key} already exists in dictionary")
+            else:
+                self[key] = value
