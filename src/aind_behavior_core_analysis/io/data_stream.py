@@ -10,6 +10,7 @@ from typing import (
     Any,
     Dict,
     List,
+    Literal,
     NewType,
     NotRequired,
     Optional,
@@ -34,8 +35,8 @@ from typing_extensions import override
 
 from aind_behavior_core_analysis.io._core import (
     DataStream,
-    DataStreamSourceBuilder,
     StreamCollection,
+    _DataStreamSourceBuilder,
 )
 
 DataFrameOrSeries = Union[pd.DataFrame, pd.Series]
@@ -225,44 +226,63 @@ class HarpDataStream(DataStream[DataFrameOrSeries]):
 WhoAmI = NewType("WhoAmI", int)
 
 
-class HarpDataStreamSourceBuilder(DataStreamSourceBuilder):
+class HarpDataStreamSourceBuilder(_DataStreamSourceBuilder):
 
     _reader_default_params = {
         "include_common_registers": True,
         "keep_type": True,
         "epoch": None,
-    }  #  Read-only
+    }  # Read-only
 
     class _BuilderInputSignature(TypedDict, total=False):
         path: PathLike
-        device_reader: NotRequired[DeviceReader | WhoAmI]
+        device_hint: NotRequired[DeviceReader | WhoAmI | PathLike]
+        default_inference_mode: NotRequired[Literal["yml", "register0"]]
 
-    def build(self, **build_kwargs: Unpack[_BuilderInputSignature]) -> StreamCollection:
+    @override
+    @classmethod
+    def build(cls, **build_kwargs: Unpack[_BuilderInputSignature]) -> StreamCollection:
 
         path = build_kwargs.get("path", None)
         if path is None:
             raise ValueError("path is required")
         path = Path(path)
 
-        device_reader = build_kwargs.get("device_reader", None)
+        device_reader = build_kwargs.get("device_hint", None)
 
         if device_reader is None:
-            device_reader = harp.create_reader(device=path, **self._reader_default_params)
+            default_inference_mode = build_kwargs.get("default_inference_mode", "yml")
+            match default_inference_mode:
+                case "yml":
+                    device_reader = harp.create_reader(device=path, **cls._reader_default_params)
+                case "register0":
+                    raise NotImplementedError("register0 inference mode not implemented yet")
+                case _:
+                    raise ValueError(
+                        f"Invalid default_inference_mode. Must be one of \
+                            {cls._BuilderInputSignature['default_inference_mode']}"
+                    )
+
         elif isinstance(device_reader, DeviceReader):
-            pass
+            pass  # Trivially pass the device_reader object
+        elif isinstance(device_reader, Path):
+            device_reader = cls._make_device_reader(path=path, file=device_reader)
         elif isinstance(device_reader, int):
-            device_reader = self._get_reader_from_whoami(path, int(device_reader))
+            device_reader = cls._get_reader_from_whoami(path=path, who_am_i=int(device_reader))
         else:
             raise ValueError("Invalid device reader input")
 
-        return StreamCollection()
+        if not isinstance(device_reader, DeviceReader):  # Guard clause just in case. Fail early.
+            raise TypeError(f"Invalid device_reader type. Expected {type(DeviceReader)} but got {type(device_reader)}")
+
+        streams = StreamCollection()
+        for name, reader in device_reader.registers.items():
+            streams.try_append(name, HarpDataStream(path, name=name, register_reader=reader, auto_load=False))
+        return streams
 
     @classmethod
-    def _get_reader_from_whoami(cls, path: PathLike, who_am_i: int, release: str = "main") -> DeviceReader:
-        yml_stream = io.TextIOWrapper(cls._get_yml_from_who_am_i(who_am_i, release=release))
-        device = harp.read_schema(
-            yml_stream, include_common_registers=cls._reader_default_params["include_common_registers"]
-        )
+    def _make_device_reader(cls, path: PathLike, file: str | PathLike | io.TextIO) -> DeviceReader:
+        device = harp.read_schema(file, include_common_registers=cls._reader_default_params["include_common_registers"])
         reg_readers = {
             name: _create_register_parser(
                 device,
@@ -274,16 +294,21 @@ class HarpDataStreamSourceBuilder(DataStreamSourceBuilder):
         return DeviceReader(device, reg_readers)
 
     @classmethod
+    def _get_reader_from_whoami(cls, path: PathLike, who_am_i: int, release: str = "main") -> DeviceReader:
+        yml_stream = io.TextIOWrapper(cls._get_yml_from_who_am_i(who_am_i, release=release))
+        return cls._make_device_reader(path, yml_stream)
+
+    @classmethod
     def _get_yml_from_who_am_i(cls, who_am_i: int, release: str = "main") -> io.BytesIO:
         try:
             device = cls._get_who_am_i_list()[who_am_i]
         except KeyError as e:
             raise KeyError(f"WhoAmI {who_am_i} not found in whoami.yml") from e
 
-        repository_url = device.get("repository_url", None)
+        repository_url = device.get("repositoryUrl", None)
 
         if repository_url is None:
-            raise ValueError("repository_url not found in whoami.yml")
+            raise ValueError("Device's repositoryUrl not found in whoami.yml")
         else:  # attempt to get the device.yml from the repository
             _repo_hint_paths = [
                 "{repository_url}/{release}/device.yml",

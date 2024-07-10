@@ -8,7 +8,6 @@ from typing import (
     Any,
     Generic,
     List,
-    NotRequired,
     Optional,
     Sequence,
     Tuple,
@@ -112,16 +111,17 @@ class DataStream(abc.ABC, Generic[TData]):
         return f"{self.__class__.__name__} stream with data{'' if self._data is not None else 'not'} loaded."
 
 
-class DataStreamSourceBuilder(abc.ABC):
+class _DataStreamSourceBuilder(abc.ABC):
 
-    class _BuilderInput(TypedDict, total=False): ...
+    class _BuilderInputSignature(TypedDict, total=False):
+        pass
 
     @abc.abstractmethod
-    def build(self, **build_kwargs: Unpack[_BuilderInput]) -> StreamCollection: ...
+    def build(self, **build_kwargs: Unpack[_BuilderInputSignature]) -> StreamCollection: ...
 
     @classmethod
-    def parse_kwargs(cls, kwargs: dict[str, Any]) -> _BuilderInput:
-        return cls._BuilderInput(**kwargs)  # type: ignore
+    def parse_kwargs(cls, kwargs: dict[str, Any]) -> _BuilderInputSignature:
+        return cls._BuilderInputSignature(**kwargs)  # type: ignore
 
 
 _SequenceDataStreamBuilderPattern = Sequence[Tuple[Type[DataStream], StrPattern]]
@@ -158,7 +158,7 @@ class DataStreamSource:
         self,
         path: PathLike,
         *,
-        builder: DataStreamSourceBuilder,
+        builder: _DataStreamSourceBuilder,
         name: Optional[str] = None,
         auto_load: bool = False,
         **kwargs,
@@ -178,7 +178,7 @@ class DataStreamSource:
     def __init__(
         self,
         path: PathLike,
-        builder: None | Type[DataStream] | _SequenceDataStreamBuilderPattern | DataStreamSourceBuilder = None,
+        builder: None | Type[DataStream] | _SequenceDataStreamBuilderPattern | _DataStreamSourceBuilder = None,
         *,
         name: Optional[str] = None,
         auto_load: bool = False,
@@ -199,7 +199,7 @@ class DataStreamSource:
             raise NotImplementedError(
                 "builder must not be provided. Support for automatic inference is not yet implemented."
             )
-        if isinstance(self._builder, DataStreamSourceBuilder):
+        if isinstance(self._builder, _DataStreamSourceBuilder):
             self._streams = self._builder.build(**self._builder.parse_kwargs(kwargs))
 
         elif isinstance(self._builder, (type(DataStream), Sequence)):
