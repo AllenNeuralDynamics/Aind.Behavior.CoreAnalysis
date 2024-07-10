@@ -1,6 +1,5 @@
 import re
-from typing import Union, Sequence
-
+from typing import Sequence, Union
 
 StrPattern = Union[str, Sequence[str]]
 

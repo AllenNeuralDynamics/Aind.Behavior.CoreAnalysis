@@ -8,15 +8,15 @@ from typing import (
     Any,
     Generic,
     List,
+    NotRequired,
     Optional,
-    Type,
-    TypeVar,
-    overload,
     Sequence,
     Tuple,
+    Type,
     TypedDict,
+    TypeVar,
     Unpack,
-    NotRequired,
+    overload,
 )
 
 from aind_behavior_core_analysis.io._utils import StrPattern, validate_str_pattern
@@ -114,8 +114,7 @@ class DataStream(abc.ABC, Generic[TData]):
 
 class DataStreamSourceBuilder(abc.ABC):
 
-    class _BuilderInput(TypedDict, total=False):
-        bar: str
+    class _BuilderInput(TypedDict, total=False): ...
 
     @abc.abstractmethod
     def build(self, **build_kwargs: Unpack[_BuilderInput]) -> StreamCollection: ...
@@ -123,19 +122,6 @@ class DataStreamSourceBuilder(abc.ABC):
     @classmethod
     def parse_kwargs(cls, kwargs: dict[str, Any]) -> _BuilderInput:
         return cls._BuilderInput(**kwargs)  # type: ignore
-
-
-class HarpDataStreamSourceBuilder(DataStreamSourceBuilder):
-
-    class _BuilderInput(DataStreamSourceBuilder._BuilderInput):
-        foo: NotRequired[int]
-
-    def build(self, **build_kwargs: Unpack[_BuilderInput]) -> StreamCollection:
-        return StreamCollection()
-
-
-DataStreamSourceBuilder().build()
-HarpDataStreamSourceBuilder().build()
 
 
 _SequenceDataStreamBuilderPattern = Sequence[Tuple[Type[DataStream], StrPattern]]
@@ -216,12 +202,12 @@ class DataStreamSource:
         if isinstance(self._builder, DataStreamSourceBuilder):
             self._streams = self._builder.build(**self._builder.parse_kwargs(kwargs))
 
-        elif isinstance(self._builder, type(DataStream)) or isinstance(self._builder, Sequence):
+        elif isinstance(self._builder, (type(DataStream), Sequence)):
             self._builder = self._normalize_builder_from_data_stream(self._builder)
             self._streams = self._build_from_data_stream(self.path, self._builder)
 
         else:
-            raise TypeError("builder must be a DataStream type or a sequence of DataStream types")
+            raise TypeError("Builder type is not supported.")
 
         if auto_load is True:
             self.reload_streams()

@@ -14,8 +14,10 @@ dynamic = ["version", "readme"]
 
 dependencies = [
     'harp-python',
-    'numpy<2.0.0',
-    'aind_behavior_services@git+https://github.com/AllenNeuralDynamics/Aind.Behavior.Services@0.7.12',
+    'numpy<2.0.0', # numpy 2.0.0 is not supported by harp
+    'aind_behavior_services@git+https://github.com/AllenNeuralDynamics/Aind.Behavior.Services@0.7.13',
+    'pyyaml',
+    'requests',
 ]
 
 [project.optional-dependencies]

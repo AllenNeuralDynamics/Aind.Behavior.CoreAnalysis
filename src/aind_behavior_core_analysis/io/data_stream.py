@@ -1,24 +1,41 @@
 from __future__ import annotations
+
 import csv
 import io
 import json
+from functools import cache
 from os import PathLike
 from pathlib import Path
 from typing import (
+    Any,
+    Dict,
     List,
+    NewType,
+    NotRequired,
     Optional,
+    TypedDict,
     Union,
+    Unpack,
 )
 
 import harp
 import pandas as pd
+import requests
+import yaml
 from aind_behavior_services.data_types import SoftwareEvent
-from harp.reader import RegisterReader
+from harp.reader import (
+    DeviceReader,
+    RegisterReader,
+    _create_register_parser,
+    _ReaderParams,
+)
 from pydantic import BaseModel
 from typing_extensions import override
 
 from aind_behavior_core_analysis.io._core import (
     DataStream,
+    DataStreamSourceBuilder,
+    StreamCollection,
 )
 
 DataFrameOrSeries = Union[pd.DataFrame, pd.Series]
@@ -163,7 +180,7 @@ class SingletonStream(DataStream[str | BaseModel]):
                 raise TypeError("Invalid type")
 
 
-class HarpRegisterStream(DataStream[DataFrameOrSeries]):
+class HarpDataStream(DataStream[DataFrameOrSeries]):
 
     def __init__(
         self,
@@ -203,3 +220,99 @@ class HarpRegisterStream(DataStream[DataFrameOrSeries]):
             else:
                 raise ValueError("reader method is not defined")
         return self._data
+
+
+WhoAmI = NewType("WhoAmI", int)
+
+
+class HarpDataStreamSourceBuilder(DataStreamSourceBuilder):
+
+    _reader_default_params = {
+        "include_common_registers": True,
+        "keep_type": True,
+        "epoch": None,
+    }  #  Read-only
+
+    class _BuilderInputSignature(TypedDict, total=False):
+        path: PathLike
+        device_reader: NotRequired[DeviceReader | WhoAmI]
+
+    def build(self, **build_kwargs: Unpack[_BuilderInputSignature]) -> StreamCollection:
+
+        path = build_kwargs.get("path", None)
+        if path is None:
+            raise ValueError("path is required")
+        path = Path(path)
+
+        device_reader = build_kwargs.get("device_reader", None)
+
+        if device_reader is None:
+            device_reader = harp.create_reader(device=path, **self._reader_default_params)
+        elif isinstance(device_reader, DeviceReader):
+            pass
+        elif isinstance(device_reader, int):
+            device_reader = self._get_reader_from_whoami(path, int(device_reader))
+        else:
+            raise ValueError("Invalid device reader input")
+
+        return StreamCollection()
+
+    @classmethod
+    def _get_reader_from_whoami(cls, path: PathLike, who_am_i: int, release: str = "main") -> DeviceReader:
+        yml_stream = io.TextIOWrapper(cls._get_yml_from_who_am_i(who_am_i, release=release))
+        device = harp.read_schema(
+            yml_stream, include_common_registers=cls._reader_default_params["include_common_registers"]
+        )
+        reg_readers = {
+            name: _create_register_parser(
+                device,
+                name,
+                _ReaderParams(path, cls._reader_default_params["epoch"], cls._reader_default_params["keep_type"]),
+            )
+            for name in device.registers.keys()
+        }
+        return DeviceReader(device, reg_readers)
+
+    @classmethod
+    def _get_yml_from_who_am_i(cls, who_am_i: int, release: str = "main") -> io.BytesIO:
+        try:
+            device = cls._get_who_am_i_list()[who_am_i]
+        except KeyError as e:
+            raise KeyError(f"WhoAmI {who_am_i} not found in whoami.yml") from e
+
+        repository_url = device.get("repository_url", None)
+
+        if repository_url is None:
+            raise ValueError("repository_url not found in whoami.yml")
+        else:  # attempt to get the device.yml from the repository
+            _repo_hint_paths = [
+                "{repository_url}/{release}/device.yml",
+                "{repository_url}/{release}/software/bonsai/device.yml",
+            ]
+
+            yml = None
+            for hint in _repo_hint_paths:
+                url = hint.format(repository_url=repository_url, release=release)
+                response = requests.get(url, allow_redirects=True, timeout=5)
+                if response.status_code == 200:
+                    yml = io.BytesIO(response.content)
+                    break
+            if yml is None:
+                raise FileNotFoundError("device.yml not found in any repository")
+            else:
+                return yml
+
+    @cache
+    @staticmethod
+    def _get_who_am_i_list(
+        url: str = "https://raw.githubusercontent.com/harp-tech/protocol/main/whoami.yml",
+    ) -> Dict[int, Any]:
+        response = requests.get(url, allow_redirects=True, timeout=5)
+        content = response.content.decode("utf-8")
+        content = yaml.safe_load(content)
+        devices = content["devices"]
+        return devices
+
+    @classmethod
+    def parse_kwargs(cls, kwargs: dict[str, Any]) -> _BuilderInputSignature:
+        return cls._BuilderInputSignature(**kwargs)  # type: ignore
