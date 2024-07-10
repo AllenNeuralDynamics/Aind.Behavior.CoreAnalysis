@@ -6,9 +6,11 @@ from os import PathLike
 from pathlib import Path
 from typing import (
     Any,
+    Dict,
     Generic,
     List,
     Optional,
+    Protocol,
     Sequence,
     Tuple,
     Type,
@@ -111,17 +113,10 @@ class DataStream(abc.ABC, Generic[TData]):
         return f"{self.__class__.__name__} stream with data{'' if self._data is not None else 'not'} loaded."
 
 
-class _DataStreamSourceBuilder(abc.ABC):
-
-    class _BuilderInputSignature(TypedDict, total=False):
-        pass
-
-    @abc.abstractmethod
-    def build(self, **build_kwargs: Unpack[_BuilderInputSignature]) -> StreamCollection: ...
+class _DataStreamSourceBuilder(Protocol):
 
     @classmethod
-    def parse_kwargs(cls, kwargs: dict[str, Any]) -> _BuilderInputSignature:
-        return cls._BuilderInputSignature(**kwargs)  # type: ignore
+    def build(cls, *args, **build_kwargs) -> StreamCollection: ...
 
 
 _SequenceDataStreamBuilderPattern = Sequence[Tuple[Type[DataStream], StrPattern]]

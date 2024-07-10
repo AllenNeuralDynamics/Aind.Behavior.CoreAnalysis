@@ -14,6 +14,7 @@ from typing import (
     NewType,
     NotRequired,
     Optional,
+    Self,
     TypedDict,
     Union,
     Unpack,
@@ -234,49 +235,43 @@ class HarpDataStreamSourceBuilder(_DataStreamSourceBuilder):
         "epoch": None,
     }  # Read-only
 
-    class _BuilderInputSignature(TypedDict, total=False):
-        path: PathLike
-        device_hint: NotRequired[DeviceReader | WhoAmI | PathLike]
-        default_inference_mode: NotRequired[Literal["yml", "register0"]]
+    _available_inference_modes = Literal["yml", "register0"]  # Read-only
 
-    @override
     @classmethod
-    def build(cls, **build_kwargs: Unpack[_BuilderInputSignature]) -> StreamCollection:
+    def build(
+        cls,
+        path: PathLike,
+        *,
+        device_hint: Optional[DeviceReader | WhoAmI | PathLike],
+        default_inference_mode: _available_inference_modes = "yml",
+        **kwargs,
+    ) -> StreamCollection:
 
-        path = build_kwargs.get("path", None)
-        if path is None:
-            raise ValueError("path is required")
         path = Path(path)
 
-        device_reader = build_kwargs.get("device_hint", None)
-
-        if device_reader is None:
-            default_inference_mode = build_kwargs.get("default_inference_mode", "yml")
+        if device_hint is None:
             match default_inference_mode:
                 case "yml":
-                    device_reader = harp.create_reader(device=path, **cls._reader_default_params)
+                    device_hint = harp.create_reader(device=path, **cls._reader_default_params)
                 case "register0":
                     raise NotImplementedError("register0 inference mode not implemented yet")
                 case _:
                     raise ValueError(
                         f"Invalid default_inference_mode. Must be one of \
-                            {cls._BuilderInputSignature['default_inference_mode']}"
+                            {cls._available_inference_modes}"
                     )
 
-        elif isinstance(device_reader, DeviceReader):
+        elif isinstance(device_hint, DeviceReader):
             pass  # Trivially pass the device_reader object
-        elif isinstance(device_reader, Path):
-            device_reader = cls._make_device_reader(path=path, file=device_reader)
-        elif isinstance(device_reader, int):
-            device_reader = cls._get_reader_from_whoami(path=path, who_am_i=int(device_reader))
+        elif isinstance(device_hint, Path):
+            device_hint = cls._make_device_reader(path=path, file=device_hint)
+        elif isinstance(device_hint, int):
+            device_hint = cls._get_reader_from_whoami(path=path, who_am_i=int(device_hint))
         else:
             raise ValueError("Invalid device reader input")
 
-        if not isinstance(device_reader, DeviceReader):  # Guard clause just in case. Fail early.
-            raise TypeError(f"Invalid device_reader type. Expected {type(DeviceReader)} but got {type(device_reader)}")
-
         streams = StreamCollection()
-        for name, reader in device_reader.registers.items():
+        for name, reader in device_hint.registers.items():
             streams.try_append(name, HarpDataStream(path, name=name, register_reader=reader, auto_load=False))
         return streams
 
@@ -337,7 +332,3 @@ class HarpDataStreamSourceBuilder(_DataStreamSourceBuilder):
         content = yaml.safe_load(content)
         devices = content["devices"]
         return devices
-
-    @classmethod
-    def parse_kwargs(cls, kwargs: dict[str, Any]) -> _BuilderInputSignature:
-        return cls._BuilderInputSignature(**kwargs)  # type: ignore
