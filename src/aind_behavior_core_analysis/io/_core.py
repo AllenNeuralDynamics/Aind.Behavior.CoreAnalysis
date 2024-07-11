@@ -43,8 +43,6 @@ class DataStream(abc.ABC, Generic[TData]):
         if path is not None:
             path = Path(path)
             self._path = path
-            if not self._path.is_file():
-                raise FileExistsError(f"Path {self._path} is not a file")
             self._name = name if name is not None else path.stem
         else:
             if name is None:
@@ -69,9 +67,6 @@ class DataStream(abc.ABC, Generic[TData]):
 
     @path.setter
     def path(self, value: PathLike) -> None:
-        _path = Path(value)
-        if not _path.is_file():
-            raise FileExistsError(f"Path {self._path} is not a file")
         self._path = Path(value)
 
     @classmethod
@@ -104,9 +99,8 @@ class DataStream(abc.ABC, Generic[TData]):
             if path:
                 self.path = path
                 self._data = self._reader(self._file_reader(path))
-
             else:
-                raise ValueError("reader method is not defined")
+                raise ValueError("Path attribute is not defined. Cannot load data.")
         return self._data
 
     def __str__(self) -> str:

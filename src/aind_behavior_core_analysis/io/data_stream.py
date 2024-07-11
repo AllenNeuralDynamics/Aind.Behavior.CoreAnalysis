@@ -270,6 +270,9 @@ class HarpDataStreamSourceBuilder(_DataStreamSourceBuilder):
         else:
             raise ValueError("Invalid device reader input")
 
+        if not isinstance(device_hint, DeviceReader):
+            raise ValueError("Invalid device reader input")
+
         streams = StreamCollection()
         for name, reader in device_hint.registers.items():
             streams.try_append(name, HarpDataStream(path, name=name, register_reader=reader, auto_load=False))
@@ -313,6 +316,10 @@ class HarpDataStreamSourceBuilder(_DataStreamSourceBuilder):
             yml = None
             for hint in _repo_hint_paths:
                 url = hint.format(repository_url=repository_url, release=release)
+                if "github.com" in url:
+                   url = url.replace("github.com", "raw.githubusercontent.com")
+                else:  # not sure why this would be hit, but...
+                    pass
                 response = requests.get(url, allow_redirects=True, timeout=5)
                 if response.status_code == 200:
                     yml = io.BytesIO(response.content)
