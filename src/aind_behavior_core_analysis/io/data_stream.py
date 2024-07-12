@@ -21,6 +21,7 @@ from typing import (
 )
 
 import harp
+import harp.reader
 import pandas as pd
 import requests
 import yaml
@@ -217,11 +218,37 @@ class HarpDataStream(DataStream[DataFrameOrSeries]):
                 if self._register_reader is None:
                     self._data = self._reader(path)
                 else:
-                    self._data = self._register_reader.read(keep_type=True)
+                    self._data = self._register_reader.read(
+                        file=self._bin_file_inference_helper(path, self._register_reader, self.name),
+                        keep_type=HarpDataStreamSourceBuilder._reader_default_params["keep_type"],  # internal
+                        epoch=HarpDataStreamSourceBuilder._reader_default_params["epoch"],
+                    )  # internal
 
             else:
                 raise ValueError("reader method is not defined")
         return self._data
+
+    @staticmethod
+    def _bin_file_inference_helper(
+        root_path: PathLike, registerReader: harp.reader.RegisterReader, name_hint: Optional[str] = None
+    ) -> Path:
+
+        root_path = Path(root_path)
+        candidate_files = list(root_path.glob(f"*_{registerReader.register.address}.bin"))
+
+        if name_hint is not None:  # If a name hint is provided, we can try to find it
+            candidate_files += list(root_path.glob(f"*_{name_hint}.bin"))
+
+        if len(candidate_files) == 1:
+            return candidate_files[0]
+        elif len(candidate_files) == 0:
+            raise FileNotFoundError(
+                "No binary file found for register while infering its location. Try passing the path explicitly"
+            )
+        else:
+            raise ValueError(
+                "Multiple binary files found for register while infering its location. Try passing the path explicitly"
+            )
 
 
 WhoAmI = NewType("WhoAmI", int)
@@ -235,7 +262,7 @@ class HarpDataStreamSourceBuilder(_DataStreamSourceBuilder):
         "epoch": None,
     }  # Read-only
 
-    _available_inference_modes = Literal["yml", "register0"]  # Read-only
+    _available_inference_modes = Literal["yml", "register_0"]  # Read-only
 
     @classmethod
     def build(
@@ -253,8 +280,14 @@ class HarpDataStreamSourceBuilder(_DataStreamSourceBuilder):
             match default_inference_mode:
                 case "yml":
                     device_hint = harp.create_reader(device=path, **cls._reader_default_params)
-                case "register0":
-                    raise NotImplementedError("register0 inference mode not implemented yet")
+                case "register_0":
+                    _reg_0_hint = list(path.glob("*_0.bin")) + list(path.glob("*whoami*.bin"))
+                    if len(_reg_0_hint) == 0:
+                        raise FileNotFoundError("register_0/whoami file not found")
+                    else:
+                        # Not sure why we would ever have more than one file, but defaulting to using the first
+                        device_hint = int(harp.read(_reg_0_hint[0]).values[0][0])
+                        return cls.build(path=path, device_hint=device_hint, **kwargs)
                 case _:
                     raise ValueError(
                         f"Invalid default_inference_mode. Must be one of \
@@ -317,9 +350,7 @@ class HarpDataStreamSourceBuilder(_DataStreamSourceBuilder):
             for hint in _repo_hint_paths:
                 url = hint.format(repository_url=repository_url, release=release)
                 if "github.com" in url:
-                   url = url.replace("github.com", "raw.githubusercontent.com")
-                else:  # not sure why this would be hit, but...
-                    pass
+                    url = url.replace("github.com", "raw.githubusercontent.com")
                 response = requests.get(url, allow_redirects=True, timeout=5)
                 if response.status_code == 200:
                     yml = io.BytesIO(response.content)
