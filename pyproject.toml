@@ -13,7 +13,11 @@ classifiers = [
 dynamic = ["version", "readme"]
 
 dependencies = [
-    'harp-python==0.2.0',
+    'harp-python',
+    'numpy<2.0.0', # numpy 2.0.0 is not supported by harp
+    'aind_behavior_services@git+https://github.com/AllenNeuralDynamics/Aind.Behavior.Services@0.7.13',
+    'pyyaml',
+    'requests',
 ]
 
 [project.optional-dependencies]
@@ -25,7 +29,8 @@ linters = [
     'coverage',
     'flake8',
     'interrogate',
-    'isort'
+    'isort',
+    'mypy',
 ]
 
 
@@ -36,9 +41,14 @@ where = ["src"]
 version = {attr = "aind_behavior_core_analysis.__version__"}
 readme = {file = ["README.md"]}
 
+[tool.mypy]
+enable_incomplete_feature = ["Unpack"]
+plugins = [
+    "pydantic.mypy",
+]
+
 [tool.black]
 line-length = 120
-target_version = ['py311']
 exclude = '''
 
 (
@@ -66,7 +76,6 @@ exclude_lines = ["if __name__ == .__main__.:", "pragma: no cover"]
 fail_under = 100
 
 [tool.isort]
-line_length = 120
 profile = "black"
 
 [tool.interrogate]
