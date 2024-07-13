@@ -6,7 +6,6 @@ from os import PathLike
 from pathlib import Path
 from typing import (
     Any,
-    Dict,
     Generic,
     List,
     Optional,
@@ -14,10 +13,9 @@ from typing import (
     Sequence,
     Tuple,
     Type,
-    TypedDict,
     TypeVar,
-    Unpack,
     overload,
+    runtime_checkable,
 )
 
 from aind_behavior_core_analysis.io._utils import StrPattern, validate_str_pattern
@@ -107,10 +105,10 @@ class DataStream(abc.ABC, Generic[TData]):
         return f"{self.__class__.__name__} stream with data{'' if self._data is not None else 'not'} loaded."
 
 
+@runtime_checkable
 class _DataStreamSourceBuilder(Protocol):
 
-    @classmethod
-    def build(cls, *args, **build_kwargs) -> StreamCollection: ...
+    def build(self, source: Optional[DataStreamSource] = None, /, **kwargs) -> StreamCollection: ...
 
 
 _SequenceDataStreamBuilderPattern = Sequence[Tuple[Type[DataStream], StrPattern]]
@@ -189,7 +187,7 @@ class DataStreamSource:
                 "builder must not be provided. Support for automatic inference is not yet implemented."
             )
         if isinstance(self._builder, _DataStreamSourceBuilder):
-            self._streams = self._builder.build(**self._builder.parse_kwargs(kwargs))
+            self._streams = self._builder.build(self)
 
         elif isinstance(self._builder, (type(DataStream), Sequence)):
             self._builder = self._normalize_builder_from_data_stream(self._builder)
