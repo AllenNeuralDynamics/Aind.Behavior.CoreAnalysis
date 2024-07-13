@@ -12,12 +12,9 @@ from typing import (
     List,
     Literal,
     NewType,
-    NotRequired,
     Optional,
-    Self,
-    TypedDict,
     Union,
-    Unpack,
+    overload,
 )
 
 import harp
@@ -37,6 +34,7 @@ from typing_extensions import override
 
 from aind_behavior_core_analysis.io._core import (
     DataStream,
+    DataStreamSource,
     StreamCollection,
     _DataStreamSourceBuilder,
 )
@@ -264,22 +262,47 @@ class HarpDataStreamSourceBuilder(_DataStreamSourceBuilder):
 
     _available_inference_modes = Literal["yml", "register_0"]  # Read-only
 
-    @classmethod
-    def build(
-        cls,
-        path: PathLike,
-        *,
-        device_hint: Optional[DeviceReader | WhoAmI | PathLike],
+    def __init__(
+        self,
+        device_hint: Optional[DeviceReader | WhoAmI | PathLike] = None,
         default_inference_mode: _available_inference_modes = "yml",
-        **kwargs,
+    ) -> None:
+
+        self.device_hint = device_hint
+        self.default_inference_mode = default_inference_mode
+
+    @overload
+    def build(self, source: Optional[DataStreamSource] = None, /, **kwargs) -> StreamCollection: ...
+
+    @overload
+    def build(
+        self, source: Optional[DataStreamSource] = None, /, path: Optional[PathLike] = None, **kwargs
+    ) -> StreamCollection: ...
+
+    def build(
+        self, source: Optional[DataStreamSource] = None, /, path: Optional[PathLike] = None, **kwargs
     ) -> StreamCollection:
 
-        path = Path(path)
+        # Leaving this undocumented here for now...
+        device_hint = kwargs.get("device_hint", self.device_hint)
+        default_inference_mode = kwargs.get("default_inference_mode", self.default_inference_mode)
+
+        # User the explicit path if provided, otherwise default to the DataStreamSource object path
+        if path is None:
+            _source_path = source.path if source is not None else None
+            if _source_path is not None:
+                path = Path(_source_path)
+            else:
+                raise ValueError(
+                    "Path is not defined. Define it in the DataStreamSource source object or pass it as an argument."
+                )
+        else:
+            path = Path(path)
 
         if device_hint is None:
             match default_inference_mode:
                 case "yml":
-                    device_hint = harp.create_reader(device=path, **cls._reader_default_params)
+                    device_hint = harp.create_reader(device=path, **self._reader_default_params)
                 case "register_0":
                     _reg_0_hint = list(path.glob("*_0.bin")) + list(path.glob("*whoami*.bin"))
                     if len(_reg_0_hint) == 0:
@@ -287,27 +310,30 @@ class HarpDataStreamSourceBuilder(_DataStreamSourceBuilder):
                     else:
                         # Not sure why we would ever have more than one file, but defaulting to using the first
                         device_hint = int(harp.read(_reg_0_hint[0]).values[0][0])
-                        return cls.build(path=path, device_hint=device_hint, **kwargs)
+                        new_builder = HarpDataStreamSourceBuilder(device_hint=device_hint)
+                        return new_builder.build(
+                            source, path=path
+                        )  # Recursive call. Passing the source object for possible forward compatibility
                 case _:
                     raise ValueError(
                         f"Invalid default_inference_mode. Must be one of \
-                            {cls._available_inference_modes}"
+                            {self._available_inference_modes}"
                     )
 
-        elif isinstance(device_hint, DeviceReader):
+        elif isinstance(self.device_hint, DeviceReader):
             pass  # Trivially pass the device_reader object
-        elif isinstance(device_hint, Path):
-            device_hint = cls._make_device_reader(path=path, file=device_hint)
-        elif isinstance(device_hint, int):
-            device_hint = cls._get_reader_from_whoami(path=path, who_am_i=int(device_hint))
+        elif isinstance(self.device_hint, Path):
+            self.device_hint = self._make_device_reader(path=path, file=self.device_hint)
+        elif isinstance(self.device_hint, int):
+            self.device_hint = self._get_reader_from_whoami(path=path, who_am_i=int(self.device_hint))
         else:
             raise ValueError("Invalid device reader input")
 
-        if not isinstance(device_hint, DeviceReader):
+        if not isinstance(self.device_hint, DeviceReader):  # Guard-clause
             raise ValueError("Invalid device reader input")
 
         streams = StreamCollection()
-        for name, reader in device_hint.registers.items():
+        for name, reader in self.device_hint.registers.items():
             streams.try_append(name, HarpDataStream(path, name=name, register_reader=reader, auto_load=False))
         return streams
 
