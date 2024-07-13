@@ -252,20 +252,45 @@ class DataStreamSource:
         return streams
 
     def reload_streams(self, force_reload: bool = False) -> None:
-        for stream in self.streams.values():
+        for stream in self._streams.values():
             stream.load(force_reload=force_reload)
 
     def __str__(self) -> str:
-        return f"DataStreamSource from {self._path}"
+        return f"DataStreamSource from {self._path}" + f"\n{str(self._streams)}"
 
     def __repr__(self) -> str:
         return f"DataStreamSource from {self._path}"
 
+    def __getitem__(self, key: str) -> DataStream:
+        return self._streams[key]
+
+    def __iter__(self):
+        return self._streams.__iter__()
+
+    def __next__(self):
+        return self._streams.__next__()
+
 
 class StreamCollection(UserDict[str, DataStream]):
     def __str__(self):
-        single_streams = [f"{key}: {value}" for key, value in self.items()]
-        return f"Streams with {len(self)} streams: \n" + "\n".join(single_streams)
+        table = []
+        table.append(["Stream Name", "Stream Type", "Is Loaded"])
+        table.append(["-" * 20, "-" * 20, "-" * 20])
+        for key, value in self.items():
+            table.append([key, value.__class__.__name__, "Yes" if value._data is not None else "No"])
+
+        max_lengths = [max(len(str(row[i])) for row in table) for i in range(len(table[0]))]
+
+        formatted_table = []
+        for row in table:
+            formatted_row = [str(cell).ljust(max_lengths[i]) for i, cell in enumerate(row)]
+            formatted_table.append(formatted_row)
+
+        table_str = ""
+        for row in formatted_table:
+            table_str += " | ".join(row) + "\n"
+
+        return table_str
 
     def try_append(self, key: str, value: DataStream) -> None:
         """
