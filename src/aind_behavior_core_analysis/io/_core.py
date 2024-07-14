@@ -27,6 +27,7 @@ class DataStream(abc.ABC, Generic[TData]):
 
     def __init__(
         self,
+        /,
         path: Optional[PathLike],
         *,
         name: Optional[str] = None,
@@ -88,7 +89,7 @@ class DataStream(abc.ABC, Generic[TData]):
             )
         return self._data
 
-    def load(self, path: Optional[PathLike] = None, *, force_reload: bool = False, **kwargs) -> TData:
+    def load(self, /, path: Optional[PathLike] = None, *, force_reload: bool = False, **kwargs) -> TData:
 
         if force_reload is False and self._data:
             pass
@@ -108,7 +109,7 @@ class DataStream(abc.ABC, Generic[TData]):
 @runtime_checkable
 class _DataStreamSourceBuilder(Protocol):
 
-    def build(self, source: Optional[DataStreamSource] = None, /, **kwargs) -> StreamCollection: ...
+    def build(self, /, source: Optional[DataStreamSource] = None, **kwargs) -> StreamCollection: ...
 
 
 _SequenceDataStreamBuilderPattern = Sequence[Tuple[Type[DataStream], StrPattern]]
@@ -121,6 +122,7 @@ class DataStreamSource:
     @overload
     def __init__(
         self,
+        /,
         path: PathLike,
         builder: Type[DataStream],
         *,
@@ -132,6 +134,7 @@ class DataStreamSource:
     @overload
     def __init__(
         self,
+        /,
         path: PathLike,
         builder: _SequenceDataStreamBuilderPattern,
         *,
@@ -143,6 +146,7 @@ class DataStreamSource:
     @overload
     def __init__(
         self,
+        /,
         path: PathLike,
         *,
         builder: _DataStreamSourceBuilder,
@@ -154,6 +158,7 @@ class DataStreamSource:
     @overload
     def __init__(
         self,
+        /,
         path: PathLike,
         builder: None,
         *,
@@ -164,6 +169,7 @@ class DataStreamSource:
 
     def __init__(
         self,
+        /,
         path: PathLike,
         builder: None | Type[DataStream] | _SequenceDataStreamBuilderPattern | _DataStreamSourceBuilder = None,
         *,

@@ -6,16 +6,7 @@ import json
 from functools import cache
 from os import PathLike
 from pathlib import Path
-from typing import (
-    Any,
-    Dict,
-    List,
-    Literal,
-    NewType,
-    Optional,
-    Union,
-    overload,
-)
+from typing import Any, Dict, List, Literal, NewType, Optional, Union, overload
 
 import harp
 import harp.reader
@@ -47,6 +38,7 @@ class SoftwareEventStream(DataStream[DataFrameOrSeries]):
 
     def __init__(
         self,
+        /,
         path: Optional[PathLike],
         *,
         name: Optional[str] = None,
@@ -58,7 +50,7 @@ class SoftwareEventStream(DataStream[DataFrameOrSeries]):
         self._inner_parser = inner_parser
         self._run_auto_load(auto_load)
 
-    def load(self, path: Optional[PathLike] = None, *, force_reload: bool = False, **kwargs) -> DataFrameOrSeries:
+    def load(self, /, path: Optional[PathLike] = None, *, force_reload: bool = False, **kwargs) -> DataFrameOrSeries:
         super().load(path, force_reload=force_reload, **kwargs)
         self._data = self._apply_inner_parser(self._data)
         return self._data
@@ -111,7 +103,7 @@ class CsvStream(DataStream[DataFrameOrSeries]):
     """Represents a generic Software event."""
 
     def __init__(
-        self, path: Optional[PathLike], *, name: Optional[str] = None, auto_load: bool = False, **kwargs
+        self, /, path: Optional[PathLike], *, name: Optional[str] = None, auto_load: bool = False, **kwargs
     ) -> None:
         super().__init__(path, name=name, auto_load=False, **kwargs)
         self._run_auto_load(auto_load)
@@ -142,6 +134,7 @@ class SingletonStream(DataStream[str | BaseModel]):
 
     def __init__(
         self,
+        /,
         path: Optional[PathLike],
         *,
         name: Optional[str] = None,
@@ -162,7 +155,7 @@ class SingletonStream(DataStream[str | BaseModel]):
     def _reader(cls, value, *args, **kwargs) -> str:
         return value
 
-    def load(self, path: Optional[PathLike] = None, *, force_reload: bool = False, **kwargs) -> str | BaseModel:
+    def load(self, /, path: Optional[PathLike] = None, *, force_reload: bool = False, **kwargs) -> str | BaseModel:
         super().load(path, force_reload=force_reload, **kwargs)
         self._data = self._apply_inner_parser(self._data)
         return self._data
@@ -185,6 +178,7 @@ class HarpDataStream(DataStream[DataFrameOrSeries]):
 
     def __init__(
         self,
+        /,
         path: Optional[PathLike],
         *,
         name: Optional[str] = None,
@@ -205,8 +199,7 @@ class HarpDataStream(DataStream[DataFrameOrSeries]):
     def _reader(cls, *args, **kwargs) -> DataFrameOrSeries:
         return harp.read(*args, **kwargs)
 
-    @override
-    def load(self, path: Optional[PathLike] = None, *, force_reload: bool = False, **kwargs) -> DataFrameOrSeries:
+    def load(self, /, path: Optional[PathLike] = None, *, force_reload: bool = False, **kwargs) -> DataFrameOrSeries:
         if force_reload is False and self._data:
             pass
         else:
@@ -219,20 +212,19 @@ class HarpDataStream(DataStream[DataFrameOrSeries]):
                     self._data = self._register_reader.read(
                         file=self._bin_file_inference_helper(path, self._register_reader, self.name),
                         keep_type=HarpDataStreamSourceBuilder._reader_default_params["keep_type"],  # internal
-                        epoch=HarpDataStreamSourceBuilder._reader_default_params["epoch"],
-                    )  # internal
-
+                        epoch=HarpDataStreamSourceBuilder._reader_default_params["epoch"],  # internal
+                    )
             else:
                 raise ValueError("reader method is not defined")
         return self._data
 
     @staticmethod
     def _bin_file_inference_helper(
-        root_path: PathLike, registerReader: harp.reader.RegisterReader, name_hint: Optional[str] = None
+        root_path: PathLike, register_reader: harp.reader.RegisterReader, name_hint: Optional[str] = None
     ) -> Path:
 
         root_path = Path(root_path)
-        candidate_files = list(root_path.glob(f"*_{registerReader.register.address}.bin"))
+        candidate_files = list(root_path.glob(f"*_{register_reader.register.address}.bin"))
 
         if name_hint is not None:  # If a name hint is provided, we can try to find it
             candidate_files += list(root_path.glob(f"*_{name_hint}.bin"))
@@ -272,15 +264,10 @@ class HarpDataStreamSourceBuilder(_DataStreamSourceBuilder):
         self.default_inference_mode = default_inference_mode
 
     @overload
-    def build(self, source: Optional[DataStreamSource] = None, /, **kwargs) -> StreamCollection: ...
-
-    @overload
-    def build(
-        self, source: Optional[DataStreamSource] = None, /, path: Optional[PathLike] = None, **kwargs
-    ) -> StreamCollection: ...
+    def build(self, /, source: Optional[DataStreamSource] = None, **kwargs) -> StreamCollection: ...
 
     def build(
-        self, source: Optional[DataStreamSource] = None, /, path: Optional[PathLike] = None, **kwargs
+        self, /, source: Optional[DataStreamSource] = None, *, path: Optional[PathLike] = None, **kwargs
     ) -> StreamCollection:
 
         # Leaving this undocumented here for now...
