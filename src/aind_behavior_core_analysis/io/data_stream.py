@@ -21,7 +21,6 @@ from harp.reader import (
     _ReaderParams,
 )
 from pydantic import BaseModel
-from typing_extensions import override
 
 from aind_behavior_core_analysis.io._core import (
     DataStream,
