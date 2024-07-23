@@ -53,5 +53,5 @@ mccabe = { max-complexity = 14 }
 pydocstyle = { convention = 'google' }
 
 [tool.codespell]
-skip = '.git,*.pdf,*.svg,./bonsai,*.bonsai,./docs/_build'
+skip = '.git,*.pdf,*.svg,./bonsai,*.bonsai,./docs/_build,./build'
 ignore-words-list = 'nd'

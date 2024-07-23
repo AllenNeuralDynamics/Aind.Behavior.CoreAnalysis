@@ -232,11 +232,11 @@ class HarpDataStream(DataStream[DataFrameOrSeries]):
             return candidate_files[0]
         elif len(candidate_files) == 0:
             raise FileNotFoundError(
-                "No binary file found for register while infering its location. Try passing the path explicitly"
+                "No binary file found for register while inferring its location. Try passing the path explicitly"
             )
         else:
             raise ValueError(
-                "Multiple binary files found for register while infering its location. Try passing the path explicitly"
+                "Multiple binary files found for register while inferring its location. Try passing the path explicitly"
             )
 
 
