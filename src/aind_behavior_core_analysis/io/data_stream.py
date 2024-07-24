@@ -121,7 +121,6 @@ class CsvStream(DataStream[DataFrameOrSeries]):
         col_names: Optional[List[str]] = None,
         **kwargs,
     ) -> DataFrameOrSeries:
-
         has_header = csv.Sniffer().has_header(value)
         _header = 0 if has_header is True else None
         df = pd.read_csv(io.StringIO(value), header=_header, index_col=infer_index_col, names=col_names)
@@ -129,8 +128,6 @@ class CsvStream(DataStream[DataFrameOrSeries]):
 
 
 class SingletonStream(DataStream[str | BaseModel]):
-    """Represents a generic Software event."""
-
     def __init__(
         self,
         /,
@@ -174,7 +171,6 @@ class SingletonStream(DataStream[str | BaseModel]):
 
 
 class HarpDataStream(DataStream[DataFrameOrSeries]):
-
     def __init__(
         self,
         /,
@@ -221,7 +217,6 @@ class HarpDataStream(DataStream[DataFrameOrSeries]):
     def _bin_file_inference_helper(
         root_path: PathLike, register_reader: harp.reader.RegisterReader, name_hint: Optional[str] = None
     ) -> Path:
-
         root_path = Path(root_path)
         candidate_files = list(root_path.glob(f"*_{register_reader.register.address}.bin"))
 
@@ -244,7 +239,6 @@ WhoAmI = NewType("WhoAmI", int)
 
 
 class HarpDataStreamSourceBuilder(_DataStreamSourceBuilder):
-
     _reader_default_params = {
         "include_common_registers": True,
         "keep_type": True,
@@ -258,17 +252,16 @@ class HarpDataStreamSourceBuilder(_DataStreamSourceBuilder):
         device_hint: Optional[DeviceReader | WhoAmI | PathLike] = None,
         default_inference_mode: _available_inference_modes = "yml",
     ) -> None:
-
         self.device_hint = device_hint
         self.default_inference_mode = default_inference_mode
 
     @overload
-    def build(self, /, source: Optional[DataStreamSource] = None, **kwargs) -> StreamCollection: ...
+    def build(self, /, source: Optional[DataStreamSource] = None, **kwargs) -> StreamCollection:
+        ...
 
     def build(
         self, /, source: Optional[DataStreamSource] = None, *, path: Optional[PathLike] = None, **kwargs
     ) -> StreamCollection:
-
         # Leaving this undocumented here for now...
         device_hint = kwargs.get("device_hint", self.device_hint)
         default_inference_mode = kwargs.get("default_inference_mode", self.default_inference_mode)

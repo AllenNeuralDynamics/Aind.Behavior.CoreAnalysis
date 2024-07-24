@@ -8,23 +8,22 @@ from typing import (
     Any,
     Generic,
     List,
+    NamedTuple,
     Optional,
     Protocol,
     Sequence,
-    Tuple,
     Type,
     TypeVar,
     overload,
     runtime_checkable,
 )
 
-from aind_behavior_core_analysis.io._utils import StrPattern, validate_str_pattern
+from aind_behavior_core_analysis.io._utils import StrPattern
 
 TData = TypeVar("TData", bound=Any)
 
 
 class DataStream(abc.ABC, Generic[TData]):
-
     def __init__(
         self,
         /,
@@ -35,7 +34,6 @@ class DataStream(abc.ABC, Generic[TData]):
         _data: Optional[TData] = None,
         **kwargs,
     ) -> None:
-
         self._auto_load = auto_load
         self._data = _data
 
@@ -90,7 +88,6 @@ class DataStream(abc.ABC, Generic[TData]):
         return self._data
 
     def load(self, /, path: Optional[PathLike] = None, *, force_reload: bool = False, **kwargs) -> TData:
-
         if force_reload is False and self._data:
             pass
         else:
@@ -108,11 +105,13 @@ class DataStream(abc.ABC, Generic[TData]):
 
 @runtime_checkable
 class _DataStreamSourceBuilder(Protocol):
+    def build(self, /, source: Optional[DataStreamSource] = None, **kwargs) -> StreamCollection:
+        ...
 
-    def build(self, /, source: Optional[DataStreamSource] = None, **kwargs) -> StreamCollection: ...
 
-
-_SequenceDataStreamBuilderPattern = Sequence[Tuple[Type[DataStream], StrPattern]]
+class DataStreamBuilderPattern(NamedTuple):
+    stream_type: Type[DataStream]
+    pattern: StrPattern
 
 
 class DataStreamSource:
@@ -129,19 +128,34 @@ class DataStreamSource:
         name: Optional[str] = None,
         auto_load: bool = False,
         **kwargs,
-    ) -> None: ...
+    ) -> None:
+        ...
 
     @overload
     def __init__(
         self,
         /,
         path: PathLike,
-        builder: _SequenceDataStreamBuilderPattern,
+        builder: DataStreamBuilderPattern,
         *,
         name: Optional[str] = None,
         auto_load: bool = False,
         **kwargs,
-    ) -> None: ...
+    ) -> None:
+        ...
+
+    @overload
+    def __init__(
+        self,
+        /,
+        path: PathLike,
+        builder: Sequence[DataStreamBuilderPattern],
+        *,
+        name: Optional[str] = None,
+        auto_load: bool = False,
+        **kwargs,
+    ) -> None:
+        ...
 
     @overload
     def __init__(
@@ -153,7 +167,8 @@ class DataStreamSource:
         name: Optional[str] = None,
         auto_load: bool = False,
         **kwargs,
-    ) -> None: ...
+    ) -> None:
+        ...
 
     @overload
     def __init__(
@@ -165,19 +180,23 @@ class DataStreamSource:
         name: Optional[str] = None,
         auto_load: bool = False,
         **kwargs,
-    ) -> None: ...
+    ) -> None:
+        ...
 
     def __init__(
         self,
         /,
         path: PathLike,
-        builder: None | Type[DataStream] | _SequenceDataStreamBuilderPattern | _DataStreamSourceBuilder = None,
+        builder: None
+        | Type[DataStream]
+        | DataStreamBuilderPattern
+        | Sequence[DataStreamBuilderPattern]
+        | _DataStreamSourceBuilder = None,
         *,
         name: Optional[str] = None,
         auto_load: bool = False,
         **kwargs,
     ) -> None:
-
         self._streams: StreamCollection
         self._path = Path(path)
 
@@ -206,15 +225,18 @@ class DataStreamSource:
             self.reload_streams()
 
     @staticmethod
-    def _normalize_builder_from_data_stream(builder: Type[DataStream] | Sequence) -> _SequenceDataStreamBuilderPattern:
+    def _normalize_builder_from_data_stream(
+        builder: Type[DataStream] | DataStreamBuilderPattern | Sequence
+    ) -> Sequence[DataStreamBuilderPattern]:
         _builder: Sequence
         if isinstance(builder, type(DataStream)):  # If only a single data stream class is provided
-            _builder = ((builder, "*"),)
+            _builder = (DataStreamBuilderPattern(stream_type=builder, pattern="*"),)
+        if isinstance(builder, DataStreamBuilderPattern):  # If only a single data stream class is provided
+            _builder = (builder,)
 
         for _tuple in _builder:
-            if not isinstance(_tuple[0], type(DataStream)):
+            if not isinstance(_tuple.stream_type, type(DataStream)):
                 raise ValueError("builder must be a DataStream type")
-            validate_str_pattern(_tuple[1])
         return _builder
 
     @property
@@ -246,10 +268,10 @@ class DataStreamSource:
         return streams
 
     @classmethod
-    def _build_from_data_stream(cls, path: PathLike, builder: _SequenceDataStreamBuilderPattern) -> StreamCollection:
+    def _build_from_data_stream(cls, path: PathLike, builder: Sequence[DataStreamBuilderPattern]) -> StreamCollection:
         streams = StreamCollection()
-        for stream_type, pattern in builder:
-            _this_type_stream = cls._get_data_streams_helper(path, stream_type, pattern)
+        for stream_builder in builder:
+            _this_type_stream = cls._get_data_streams_helper(path, stream_builder.stream_type, stream_builder.pattern)
             for stream in _this_type_stream:
                 if stream.name is None:
                     raise ValueError(f"Stream {stream} does not have a name")
