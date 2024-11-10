@@ -7,6 +7,54 @@ A repository with core primitives for analysis shared across all `Aind.Behavior`
 
 This repository is part of a bigger infrastructure that is summarized [here](https://github.com/AllenNeuralDynamics/Aind.Behavior.Services).
 
+## Getting started and API usage
+
+The current goal of the API is to provide users with a way to instantiate "data contracts" and corresponding data ingestion logic. For instance, loading the data from different streams and converting them into a common format (e.g. `pandas.DataFrame`) can be done by:
+
+```python
+
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Dict, Union
+
+from aind_behavior_core_analysis.io._core import DataStreamCollection
+from aind_behavior_core_analysis.io.data_stream import (
+    CsvStream,
+    DataStreamCollectionFromFilePattern,
+    HarpDataStreamCollectionFactory,
+    SoftwareEventStream,
+)
+
+NodeType = Union[Dict[str, DataStreamCollection], DataStreamCollection]
+
+@dataclass
+class DataContract:
+    behavior: Dict[str, NodeType]
+
+root_path = Path(r"test_2024-11-05T190325Z")
+
+dataset = DataContract(
+    behavior={
+        "Behavior": HarpDataStreamCollectionFactory(
+            path=root_path / "behavior" / "Behavior.harp", default_inference_mode="register_0"
+        ).build(),
+        "LoadCells": HarpDataStreamCollectionFactory(
+            path=root_path / "behavior" / "LoadCells.harp", default_inference_mode="register_0"
+        ).build(),
+        "RendererSynchState": DataStreamCollectionFromFilePattern(
+            path=root_path / "behavior" / "Renderer", pattern="RendererSynchState.csv", stream_type=CsvStream
+        ).build(),
+        "SoftwareEvents": DataStreamCollectionFromFilePattern(
+            path=root_path / "behavior" / "SoftwareEvents", pattern="*.json", stream_type=SoftwareEventStream
+        ).build(),
+    },
+)
+
+load_cell_data = dataset.behavior["LoadCells"]["LoadCellData"].load()
+load_cell_data.plot()
+
+```
+
 ## Installing and Upgrading
 
 if you choose to clone the repository, you can install the package by running the following command from the root directory of the repository:
