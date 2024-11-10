@@ -6,7 +6,7 @@ import json
 from functools import cache
 from os import PathLike
 from pathlib import Path
-from typing import Any, Dict, List, Literal, NewType, Optional, Union, overload
+from typing import Any, Dict, Final, List, Literal, NewType, Optional, TextIO, Type, Union
 
 import harp
 import harp.reader
@@ -21,13 +21,11 @@ from harp.reader import (
     _ReaderParams,
 )
 from pydantic import BaseModel
+from typing_extensions import override
 
-from aind_behavior_core_analysis.io._core import (
-    DataStream,
-    DataStreamSource,
-    StreamCollection,
-    _DataStreamSourceBuilder,
-)
+from aind_behavior_core_analysis.io._core import DataStream, DataStreamCollection, DataStreamCollectionFactory
+
+from ._utils import StrPattern
 
 DataFrameOrSeries = Union[pd.DataFrame, pd.Series]
 
@@ -49,8 +47,8 @@ class SoftwareEventStream(DataStream[DataFrameOrSeries]):
         self._inner_parser = inner_parser
         self._run_auto_load(auto_load)
 
-    def load(self, /, path: Optional[PathLike] = None, *, force_reload: bool = False, **kwargs) -> DataFrameOrSeries:
-        super().load(path, force_reload=force_reload, **kwargs)
+    def _load(self, /, path: Optional[PathLike] = None, *, force_reload: bool = False, **kwargs) -> DataFrameOrSeries:
+        super()._load(path, force_reload=force_reload, **kwargs)
         self._data = self._apply_inner_parser(self._data)
         return self._data
 
@@ -60,7 +58,7 @@ class SoftwareEventStream(DataStream[DataFrameOrSeries]):
             return f.readlines()
 
     @classmethod
-    def _reader(
+    def _parser(
         cls,
         value: List[str],
         *args,
@@ -113,7 +111,7 @@ class CsvStream(DataStream[DataFrameOrSeries]):
             return f.read()
 
     @classmethod
-    def _reader(
+    def _parser(
         cls,
         value: str,
         *args,
@@ -148,11 +146,11 @@ class SingletonStream(DataStream[str | BaseModel]):
             return f.read()
 
     @classmethod
-    def _reader(cls, value, *args, **kwargs) -> str:
+    def _parser(cls, value, *args, **kwargs) -> str:
         return value
 
-    def load(self, /, path: Optional[PathLike] = None, *, force_reload: bool = False, **kwargs) -> str | BaseModel:
-        super().load(path, force_reload=force_reload, **kwargs)
+    def _load(self, /, path: Optional[PathLike] = None, *, force_reload: bool = False, **kwargs) -> str | BaseModel:
+        super()._load(path, force_reload=force_reload, **kwargs)
         self._data = self._apply_inner_parser(self._data)
         return self._data
 
@@ -170,6 +168,13 @@ class SingletonStream(DataStream[str | BaseModel]):
                 raise TypeError("Invalid type")
 
 
+_HARP_READER_DEFAULT_PARAMS: Final = {
+    "include_common_registers": True,
+    "keep_type": True,
+    "epoch": None,
+}  # Read-only
+
+
 class HarpDataStream(DataStream[DataFrameOrSeries]):
     def __init__(
         self,
@@ -178,37 +183,35 @@ class HarpDataStream(DataStream[DataFrameOrSeries]):
         *,
         name: Optional[str] = None,
         auto_load: bool = False,
-        register_reader: Optional[RegisterReader] = None,
+        register_reader: RegisterReader = None,
         **kwargs,
     ) -> None:
         super().__init__(path, name=name, auto_load=False, **kwargs)
         self._register_reader = register_reader
         self._run_auto_load(auto_load)
 
-    @classmethod
-    def _file_reader(cls, path, *args, **kwargs) -> bytes:
-        with open(path, "rb") as f:
-            return f.read()
+    def from_file(self, path):
+        return self._parser(path)
 
     @classmethod
-    def _reader(cls, *args, **kwargs) -> DataFrameOrSeries:
-        return harp.read(*args, **kwargs)
+    def _file_reader(cls, path: PathLike, *args, **kwargs) -> Path:
+        raise NotImplementedError("This method should not be called")
 
-    def load(self, /, path: Optional[PathLike] = None, *, force_reload: bool = False, **kwargs) -> DataFrameOrSeries:
-        if force_reload is False and self._data:
+    def _parser(self, *args, **kwargs) -> DataFrameOrSeries:
+        return self._register_reader.read(*args, **kwargs)
+
+    def _load(self, /, path: Optional[PathLike] = None, *, force_reload: bool = False, **kwargs) -> DataFrameOrSeries:
+        if force_reload is False and self._data is not None:
             pass
         else:
             path = Path(path) if path is not None else self.path
             if path:
-                self.path = path
-                if self._register_reader is None:
-                    self._data = self._reader(path)
-                else:
-                    self._data = self._register_reader.read(
-                        file=self._bin_file_inference_helper(path, self._register_reader, self.name),
-                        keep_type=HarpDataStreamSourceBuilder._reader_default_params["keep_type"],  # internal
-                        epoch=HarpDataStreamSourceBuilder._reader_default_params["epoch"],  # internal
-                    )
+                self._path = path
+                self._data = self._parser(
+                    file=self._bin_file_inference_helper(path, self._register_reader, self.name),
+                    keep_type=_HARP_READER_DEFAULT_PARAMS["keep_type"],
+                    epoch=_HARP_READER_DEFAULT_PARAMS["epoch"],  # internal
+                )
             else:
                 raise ValueError("reader method is not defined")
         return self._data
@@ -238,61 +241,37 @@ class HarpDataStream(DataStream[DataFrameOrSeries]):
 WhoAmI = NewType("WhoAmI", int)
 
 
-class HarpDataStreamSourceBuilder(_DataStreamSourceBuilder):
-    _reader_default_params = {
-        "include_common_registers": True,
-        "keep_type": True,
-        "epoch": None,
-    }  # Read-only
-
+class HarpDataStreamCollectionFactory(DataStreamCollectionFactory):
     _available_inference_modes = Literal["yml", "register_0"]  # Read-only
 
     def __init__(
         self,
+        path: PathLike,
         device_hint: Optional[DeviceReader | WhoAmI | PathLike] = None,
         default_inference_mode: _available_inference_modes = "yml",
     ) -> None:
+        self._path = path
         self.device_hint = device_hint
         self.default_inference_mode = default_inference_mode
 
-    @overload
-    def build(self, /, source: Optional[DataStreamSource] = None, **kwargs) -> StreamCollection:
-        ...
-
-    def build(
-        self, /, source: Optional[DataStreamSource] = None, *, path: Optional[PathLike] = None, **kwargs
-    ) -> StreamCollection:
+    def build(self) -> DataStreamCollection:
         # Leaving this undocumented here for now...
-        device_hint = kwargs.get("device_hint", self.device_hint)
-        default_inference_mode = kwargs.get("default_inference_mode", self.default_inference_mode)
+        device_hint = self.device_hint
+        default_inference_mode = self.default_inference_mode
 
-        # User the explicit path if provided, otherwise default to the DataStreamSource object path
-        if path is None:
-            _source_path = source.path if source is not None else None
-            if _source_path is not None:
-                path = Path(_source_path)
-            else:
-                raise ValueError(
-                    "Path is not defined. Define it in the DataStreamSource source object or pass it as an argument."
-                )
-        else:
-            path = Path(path)
-
+        path = Path(self._path)
         if device_hint is None:
             match default_inference_mode:
                 case "yml":
-                    device_hint = harp.create_reader(device=path, **self._reader_default_params)
+                    device_hint = harp.create_reader(device=path, **_HARP_READER_DEFAULT_PARAMS)
                 case "register_0":
                     _reg_0_hint = list(path.glob("*_0.bin")) + list(path.glob("*whoami*.bin"))
                     if len(_reg_0_hint) == 0:
-                        raise FileNotFoundError("register_0/whoami file not found")
+                        raise FileNotFoundError("<*_0.bin> file (WhoAmI register) file not found")
                     else:
                         # Not sure why we would ever have more than one file, but defaulting to using the first
                         device_hint = int(harp.read(_reg_0_hint[0]).values[0][0])
-                        new_builder = HarpDataStreamSourceBuilder(device_hint=device_hint)
-                        return new_builder.build(
-                            source, path=path
-                        )  # Recursive call. Passing the source object for possible forward compatibility
+                        return HarpDataStreamCollectionFactory(path=path, device_hint=device_hint).build()
                 case _:
                     raise ValueError(
                         f"Invalid default_inference_mode. Must be one of \
@@ -311,19 +290,21 @@ class HarpDataStreamSourceBuilder(_DataStreamSourceBuilder):
         if not isinstance(self.device_hint, DeviceReader):  # Guard-clause
             raise ValueError("Invalid device reader input")
 
-        streams = StreamCollection()
+        streams = DataStreamCollection()
         for name, reader in self.device_hint.registers.items():
             streams.try_append(name, HarpDataStream(path, name=name, register_reader=reader, auto_load=False))
         return streams
 
     @classmethod
-    def _make_device_reader(cls, path: PathLike, file: str | PathLike | io.TextIO) -> DeviceReader:
-        device = harp.read_schema(file, include_common_registers=cls._reader_default_params["include_common_registers"])
+    def _make_device_reader(cls, path: PathLike, file: str | PathLike | TextIO) -> DeviceReader:
+        device = harp.read_schema(
+            file, include_common_registers=_HARP_READER_DEFAULT_PARAMS["include_common_registers"]
+        )
         reg_readers = {
             name: _create_register_parser(
                 device,
                 name,
-                _ReaderParams(path, cls._reader_default_params["epoch"], cls._reader_default_params["keep_type"]),
+                _ReaderParams(path, _HARP_READER_DEFAULT_PARAMS["epoch"], _HARP_READER_DEFAULT_PARAMS["keep_type"]),
             )
             for name in device.registers.keys()
         }
@@ -375,3 +356,52 @@ class HarpDataStreamSourceBuilder(_DataStreamSourceBuilder):
         content = yaml.safe_load(content)
         devices = content["devices"]
         return devices
+
+
+class DataStreamCollectionFromFilePattern(DataStreamCollectionFactory):
+    """A factory that builds a collection of data streams from a file pattern string."""
+
+    def __init__(self, path: PathLike, stream_type: Type[DataStream], pattern: StrPattern) -> None:
+        self._path = path
+        self._stream_type = stream_type
+        self._pattern = pattern
+
+    @property
+    def path(self) -> PathLike:
+        return self._path
+
+    @property
+    def stream_type(self) -> Type[DataStream]:
+        return self._stream_type
+
+    @property
+    def pattern(self) -> StrPattern:
+        return self._pattern
+
+    @override
+    def build(self) -> DataStreamCollection:
+        return self._build_from_data_stream()
+
+    @staticmethod
+    def _get_data_streams_helper(
+        path: PathLike, stream_type: Type[DataStream], pattern: StrPattern
+    ) -> List[DataStream]:
+        _path = Path(path)
+        if isinstance(pattern, str):
+            pattern = [pattern]
+        files: List[Path] = []
+        for pat in pattern:
+            files.extend(_path.glob(pat))
+        files = list(set(files))
+        streams: List[DataStream] = [stream_type(file) for file in files]
+        return streams
+
+    def _build_from_data_stream(self) -> DataStreamCollection:
+        streams = DataStreamCollection()
+        _this_type_stream = self._get_data_streams_helper(self.path, self.stream_type, self.pattern)
+        for stream in _this_type_stream:
+            if stream.name is None:
+                raise ValueError(f"Stream {stream} does not have a name")
+            else:
+                _ = streams.try_append(stream.name, stream)
+        return streams
