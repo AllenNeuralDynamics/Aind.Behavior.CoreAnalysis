@@ -5,25 +5,38 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "aind-behavior-core-analysis"
 description = "A library with core primitives for analysis shared across all `Aind.Behavior` tasks"
+authors = [
+    { name = "Bruno Cruz", email = "bruno.cruz@alleninstitute.org" },
+]
 license = {text = "MIT"}
 requires-python = ">=3.11"
+
 classifiers = [
-    "Programming Language :: Python :: 3"
+    "Programming Language :: Python :: 3.11",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
 ]
+
 dynamic = ["version", "readme"]
 
 dependencies = [
     'harp-python',
-    'numpy<2.0.0', # numpy 2.0.0 is not supported by harp
     'aind_behavior_services>=0.8.0',
     'pyyaml',
     'requests',
 ]
 
+[project.urls]
+Documentation = "https://allenneuraldynamics.github.io/Aind.Behavior.CoreAnalysis/"
+Repository = "https://github.com/AllenNeuralDynamics/Aind.Behavior.CoreAnalysis/"
+Issues = "https://github.com/AllenNeuralDynamics/Aind.Behavior.CoreAnalysis/issues"
+Changelog = "https://github.com/AllenNeuralDynamics/Aind.Behavior.CoreAnalysis/releases"
+
+
 [project.optional-dependencies]
 
 
-linters = [
+dev = [
     'ruff',
     'codespell'
 ]
@@ -53,5 +66,5 @@ mccabe = { max-complexity = 14 }
 pydocstyle = { convention = 'google' }
 
 [tool.codespell]
-skip = '.git,*.pdf,*.svg,./bonsai,*.bonsai,./docs/_build,./build'
+skip = '.git,*.pdf,*.svg,./bonsai,*.bonsai,./docs/_build,uv.lock'
 ignore-words-list = 'nd'
