@@ -1,7 +1,10 @@
 # aind-behavior-core-analysis
 
+![CI](https://github.com/AllenNeuralDynamics/Aind.Behavior.CoreAnalysis/actions/workflows/ci.yml/badge.svg)
+[![PyPI - Version](https://img.shields.io/pypi/v/aind-behavior-services)](https://pypi.org/project/aind-behavior-core-analysis/)
 [![License](https://img.shields.io/badge/license-MIT-brightgreen)](LICENSE)
-[![CodeStyle](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
 
 A repository with core primitives for analysis shared across all `Aind.Behavior` tasks
 
