@@ -10,7 +10,7 @@ on:
 
 jobs:
   linters:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     name: Lint ${{ matrix.python-version }}
     strategy:
       fail-fast: false
@@ -28,23 +28,29 @@ jobs:
       - name: Install dependencies
         run: uv sync --extra dev
       - name: Run ruff format
-        run: uv run ruff format . --config .\pyproject.toml
+        run: uv run ruff format .
       - name: Run ruff check
-        run: uv run ruff check . --config .\pyproject.toml
+        run: uv run ruff check .
       - name: Run codespell
         run : uv run codespell .
 
 
   tests:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
+    name: Testing ${{ matrix.python-version }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.12', '3.13']
     steps:
       - uses: actions/checkout@v4
 
       - uses: astral-sh/setup-uv@v3
         with:
           enable-cache: true
-      - name: Set up Python
-        run: uv python install
+
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
 
       - name: Install dependencies
         run: uv sync --extra dev
