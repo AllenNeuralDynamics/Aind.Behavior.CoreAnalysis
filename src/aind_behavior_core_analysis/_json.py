@@ -12,7 +12,7 @@ class JsonReaderParams(FileReaderParams):
 
 def json_reader(params: JsonReaderParams) -> dict[str, str]:
     with open(params.path, "r", encoding=params.encoding) as file:
-        data = json.loads(file)
+        data = json.load(file)
     return data
 
 
