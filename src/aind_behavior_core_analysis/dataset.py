@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from typing import Generator, Mapping, Self, TypeVar, Union
+from typing import Generator, Mapping, Union
+
 from .base import DataStream
 
 
