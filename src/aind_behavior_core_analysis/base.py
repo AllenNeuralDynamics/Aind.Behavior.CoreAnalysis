@@ -1,17 +1,13 @@
 import abc
 import os
-from dataclasses import dataclass
-from typing import Any, Generic, Protocol, Self, TypeVar, final, ClassVar
-from typing_extensions import overload
+from dataclasses import dataclass, field
+from typing import Any, Generic, Optional, Protocol, Self, TypeVar
 
 import pydantic
 from pydantic import BaseModel, Field, computed_field
-from typing import Optional
-from dataclasses import field
 
 # solve paths posthoc by iterating down the tree
 _TData = TypeVar("_TData", bound=Any)
-_TDataStream = TypeVar("_TDataStream", bound="DataStream")
 
 _ReaderParams = TypeVar("_ReaderParams", bound=BaseModel, contravariant=True)
 _WriterParams = TypeVar("_WriterParams", bound=BaseModel, contravariant=True)

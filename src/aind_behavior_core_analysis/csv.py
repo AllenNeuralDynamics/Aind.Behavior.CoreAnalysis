@@ -1,14 +1,10 @@
-import os
 from typing import Literal, Optional
 
 import pandas as pd
-from pydantic import BaseModel, Field
+from pydantic import Field
 
-from .base import DataStream, DataStreamBuilder
-from .core import FileReaderParams
-
-class FileReaderParams(BaseModel):
-    path: os.PathLike = Field(description="Path to the file")
+from .base import DataStreamBuilder
+from .core import FileReaderParams, FileWriterParams
 
 
 class CsvReaderParams(FileReaderParams):
@@ -20,18 +16,14 @@ def csv_reader(params: CsvReaderParams) -> pd.DataFrame:
     return pd.read_csv(params.path, delimiter=params.delimiter, header=0 if params.strict_header else None)
 
 
-class _FileWriterParams(BaseModel):
-    path: os.PathLike = Field(description="Path to the file")
-
-
-class CsvWriterParams(_FileWriterParams):
+class CsvWriterParams(FileWriterParams):
     delimiter: str = Field(default=",", description="Delimiter used in the CSV file")
     encoding: Optional[Literal["utf-8"]] = Field(default=None, description="Encoding used in the CSV file")
+    index: bool = Field(default=False, description="Whether to write the index to the CSV file")
 
 
 def csv_writer(data: pd.DataFrame, params: CsvWriterParams) -> None:
-    data.to_csv(params.path, sep=params.delimiter, index=False, encoding=params.encoding)
+    data.to_csv(params.path, sep=params.delimiter, index=params.index, encoding=params.encoding)
 
 
 CsvBuilder = DataStreamBuilder(reader=csv_reader, writer=csv_writer)
-
