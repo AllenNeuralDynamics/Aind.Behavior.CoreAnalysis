@@ -1,5 +1,5 @@
-from aind_behavior_core_analysis._csv import CsvBuilder, CsvReaderParams, CsvWriterParams
-from aind_behavior_core_analysis._json import JsonBuilder, JsonReaderParams, JsonWriterParams
+from aind_behavior_core_analysis.csv import CsvBuilder, CsvReaderParams, CsvWriterParams
+from aind_behavior_core_analysis.json import JsonBuilder, JsonReaderParams, JsonWriterParams
 from aind_behavior_core_analysis.base import DataStream
 from aind_behavior_core_analysis.dataset import Dataset, DataStreamGroup
 
