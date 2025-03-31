@@ -1,7 +1,7 @@
 import abc
 import os
 from dataclasses import dataclass, field
-from typing import Any, Generic, Optional, Protocol, Self, TypeVar
+from typing import Any, Dict, Generator, Generic, Optional, Protocol, Self, TypeAlias, TypeVar, Union, final
 
 import pydantic
 from pydantic import BaseModel, Field, computed_field
@@ -64,7 +64,7 @@ class DataStreamBuilder(abc.ABC, Generic[_TData, _ReaderParams, _WriterParams]):
     def build(self: Self, reader_params: _ReaderParams, writer_params: _WriterParams):
         """Build a data stream from the given parameters."""
         return DataStream[_TData, _ReaderParams, _WriterParams](
-            builder=self,
+            io=self,
             reader_params=reader_params,
             writer_params=writer_params,
             read_on_init=False,
@@ -73,7 +73,7 @@ class DataStreamBuilder(abc.ABC, Generic[_TData, _ReaderParams, _WriterParams]):
 
 @dataclass
 class DataStream(abc.ABC, Generic[_TData, _ReaderParams, _WriterParams]):
-    builder: DataStreamBuilder[_TData, _ReaderParams, _WriterParams]
+    io: DataStreamBuilder[_TData, _ReaderParams, _WriterParams]
     reader_params: _ReaderParams
     writer_params: _WriterParams
     read_on_init: bool = field(default=False, init=True, repr=False, kw_only=True)
@@ -95,8 +95,105 @@ class DataStream(abc.ABC, Generic[_TData, _ReaderParams, _WriterParams]):
 
     def read(self) -> _TData:
         """Read data from the data stream."""
-        return self.builder.read(self.reader_params)
+        return self.io.read(self.reader_params)
 
     def write(self, data: Optional[_TData] = None) -> None:
         if data is None:
-            self.builder.write(self.data, self.writer_params)
+            self.io.write(self.data, self.writer_params)
+
+
+_GroupType: TypeAlias = Dict[str, Union[DataStream, "DataStreamGroup"]]
+
+
+class DataStreamGroupBuilder(
+    DataStreamBuilder[_GroupType, _ReaderParams, _WriterParams], Generic[_ReaderParams, _WriterParams]
+):
+    def build(self: Self, reader_params: _ReaderParams, writer_params: _WriterParams):
+        """Build a data stream from the given parameters."""
+        return DataStreamGroup[_ReaderParams, _WriterParams](
+            io=self,
+            reader_params=reader_params,
+            writer_params=writer_params,
+            read_on_init=False,
+        )
+
+
+@final
+class _UndefinedParams(BaseModel):
+    pass
+
+
+@dataclass
+class DataStreamGroup(Generic[_ReaderParams, _WriterParams]):
+    io: DataStreamGroupBuilder[_ReaderParams, _WriterParams]
+    reader_params: _ReaderParams
+    writer_params: _WriterParams
+    read_on_init: bool = field(default=False, init=True, repr=False, kw_only=True)
+    _data_streams: Optional[_GroupType] = field(default=None, init=True, repr=False, kw_only=True)
+
+    def __post_init__(self) -> None:
+        if self.read_on_init:
+            self.load()
+
+    @property
+    def data_streams(self) -> _GroupType:
+        if self._data_streams is None:
+            raise ValueError("Data has not been read yet.")
+        return self._data_streams
+
+    def load(self) -> None:
+        """Load data into the data stream."""
+        self._data_streams = self.read()
+
+    def read(self) -> _GroupType:
+        """Read data from the data stream."""
+        return self.io.read(self.reader_params)
+
+    def __getitem__(self, key: str) -> Any:
+        if self._data_streams is None:
+            raise ValueError("Data streams have not been loaded yet.")
+        if key in self._data_streams:
+            return self._data_streams[key]
+        else:
+            raise KeyError(f"Key '{key}' not found in data streams.")
+
+    def __str__(self):
+        table = []
+        table.append(["Stream Name", "Stream Type", "Is Loaded"])
+        table.append(["-" * 20, "-" * 20, "-" * 20])
+        for key, value in self.data_streams.items():
+            table.append([key, value.__class__.__name__, "Yes" if value._data is not None else "No"])
+
+        max_lengths = [max(len(str(row[i])) for row in table) for i in range(len(table[0]))]
+
+        formatted_table = []
+        for row in table:
+            formatted_row = [str(cell).ljust(max_lengths[i]) for i, cell in enumerate(row)]
+            formatted_table.append(formatted_row)
+
+        table_str = ""
+        for row in formatted_table:
+            table_str += " | ".join(row) + "\n"
+
+        return table_str
+
+    def walk_data_streams(self) -> Generator[DataStream, None, None]:
+        """Walk through the dataset tree and yield data streams."""
+        for value in self.__dict__.values():
+            if isinstance(value, DataStream):
+                yield value
+            elif isinstance(value, DataStreamGroup):
+                yield from value.walk_data_streams()
+
+    @staticmethod
+    def group(data_streams: _GroupType) -> "DataStreamGroup":
+        """Package data streams into a single data stream group."""
+        if not isinstance(data_streams, dict):
+            raise TypeError("data_streams must be a dictionary")
+        return DataStreamGroup(
+            io=DataStreamGroupBuilder(),
+            reader_params=_UndefinedParams(),
+            writer_params=_UndefinedParams(),
+            read_on_init=False,
+            _data_streams=data_streams,
+        )

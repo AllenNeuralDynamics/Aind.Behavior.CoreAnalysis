@@ -3,8 +3,8 @@ from typing import Literal, Optional
 import pandas as pd
 from pydantic import Field
 
-from .base import DataStreamBuilder
-from .core import FileReaderParams, FileWriterParams
+from aind_behavior_core_analysis.base import DataStreamBuilder
+from aind_behavior_core_analysis.core import FileReaderParams, FileWriterParams
 
 
 class CsvReaderParams(FileReaderParams):
