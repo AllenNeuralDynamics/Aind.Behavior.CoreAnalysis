@@ -1,7 +1,7 @@
 import abc
 import os
 from dataclasses import dataclass, field
-from typing import Any, Dict, Generator, Generic, Optional, Protocol, Self, TypeAlias, TypeVar, Union, final
+from typing import Any, Dict, Generator, Generic, Optional, Protocol, Self, TypeVar, Union, final
 
 import pydantic
 from pydantic import BaseModel, Field, computed_field
@@ -156,7 +156,7 @@ class DataStreamGroup(Generic[KeyedStreamLike, _ReaderParams, _WriterParams]):
         """Read data from the data stream."""
         return self.io.read(self.reader_params)
 
-    def __getitem__(self, key: str) -> Any:
+    def __getitem__(self, key: str) -> Union[DataStream, "DataStreamGroup"]:
         if self._data_streams is None:
             raise ValueError("Data streams have not been loaded yet.")
         if key in self._data_streams:

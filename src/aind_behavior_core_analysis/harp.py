@@ -1,21 +1,20 @@
-from typing import Literal, Optional, NewType, Self, Annotated, List, TYPE_CHECKING, Union, TextIO, Final, Any, Dict
-from typing_extensions import TypeAliasType
-
-import harp.reader
-import pandas as pd
-import harp
-from pydantic import Field, model_validator, AnyHttpUrl, BaseModel
-import enum
-import os
 import datetime
 import io
+import os
 from functools import cache
-import yaml
-import requests
 from pathlib import Path
+from typing import TYPE_CHECKING, Annotated, Any, Dict, List, Literal, Optional, TextIO, Union
 
-from aind_behavior_core_analysis.base import DataStreamBuilder, DataStreamGroupBuilder, DataStream, DataStreamGroup
-from aind_behavior_core_analysis.core import FileReaderParams, FileWriterParams, EmptyWriter
+import harp
+import harp.reader
+import pandas as pd
+import requests
+import yaml
+from pydantic import AnyHttpUrl, BaseModel, Field
+from typing_extensions import TypeAliasType
+
+from aind_behavior_core_analysis.base import DataStream, DataStreamBuilder
+from aind_behavior_core_analysis.core import EmptyWriter, FileReaderParams
 
 
 class _DeviceYmlSource(BaseModel):
@@ -105,17 +104,23 @@ def harp_device_reader(params: HarpDeviceReaderParams) -> Dict[str, DataStream[p
 
     reader = _make_device_reader(_yml_stream, params)
     data_streams: Dict[str, DataStream[pd.DataFrame, Any, Any]] = {}
-    # todo we can add custom file name interpolation here
+
     for name, reader in reader.registers.items():
+        # todo we can add custom file name interpolation here
+        def _reader(params: harp.reader._ReaderParams):
+            return reader.read(file_or_buf=params.base_path, epoch=params.epoch, keep_type=params.keep_type)
+
         data_streams[name] = DataStream(
-            io=DataStreamBuilder(reader=reader, writer=EmptyWriter),
-            reader_params=harp.reader._ReaderParams(None, params.epoch, params.keep_type),
+            io=DataStreamBuilder(reader=_reader, writer=EmptyWriter),
+            reader_params=harp.reader._ReaderParams(base_path=None, epoch=params.epoch, keep_type=params.keep_type),
             writer_params=None,
         )
     return data_streams
 
 
-HarpBuilder = DataStreamGroupBuilder(reader=harp_device_reader, writer=EmptyWriter)
+HarpDeviceBuilder = DataStreamBuilder(reader=harp_device_reader, writer=EmptyWriter)
+
+# HarpDeviceBuilder = DataStreamGroupBuilder(reader=harp_device_reader, writer=EmptyWriter)
 
 
 def _make_device_reader(

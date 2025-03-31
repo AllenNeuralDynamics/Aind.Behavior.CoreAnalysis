@@ -1,8 +1,7 @@
 import os
+from typing import Any
 
 from pydantic import BaseModel, Field
-from typing import Any
-from aind_behavior_core_analysis.base import _Writer
 
 
 class FileReaderParams(BaseModel):
