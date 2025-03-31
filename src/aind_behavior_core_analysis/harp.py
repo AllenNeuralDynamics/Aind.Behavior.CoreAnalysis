@@ -118,9 +118,14 @@ def harp_device_reader(params: HarpDeviceReaderParams) -> Dict[str, DataStream[p
     return data_streams
 
 
-HarpDeviceBuilder = DataStreamBuilder(reader=harp_device_reader, writer=EmptyWriter)
-
-# HarpDeviceBuilder = DataStreamGroupBuilder(reader=harp_device_reader, writer=EmptyWriter)
+HarpDeviceBuilder: DataStreamBuilder[
+    Dict[str, DataStream[pd.DataFrame, Any, Any]],
+    HarpDeviceReaderParams,
+    Any,
+] = DataStreamBuilder(
+    reader=harp_device_reader,
+    writer=None,
+)
 
 
 def _make_device_reader(
