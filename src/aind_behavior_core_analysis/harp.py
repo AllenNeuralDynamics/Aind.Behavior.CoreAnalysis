@@ -115,9 +115,7 @@ def harp_device_reader(params: HarpDeviceReaderParams) -> Dict[str, DataStream[p
     return data_streams
 
 
-HarpBuilder: DataStreamGroupBuilder[HarpDeviceReaderParams, Any] = DataStreamGroupBuilder(
-    reader=harp_device_reader, writer=EmptyWriter
-)
+HarpBuilder = DataStreamGroupBuilder(reader=harp_device_reader, writer=EmptyWriter)
 
 
 def _make_device_reader(

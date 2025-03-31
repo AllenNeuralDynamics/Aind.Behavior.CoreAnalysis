@@ -102,15 +102,22 @@ class DataStream(abc.ABC, Generic[_TData, _ReaderParams, _WriterParams]):
             self.io.write(self.data, self.writer_params)
 
 
-_GroupType: TypeAlias = Dict[str, Union[DataStream, "DataStreamGroup"]]
+# Type hinting doesnt resolve subtypes of generics apparently.
+# We pass the explicit, resolved, inner generics.
+KeyedStreamLike = TypeVar(
+    "KeyedStreamLike",
+    bound=Union[
+        Dict[str, Union[DataStream[Any, Any, Any], "DataStreamGroup[Any, Any, Any]"]],
+        Dict[str, "DataStreamGroup[Any, Any, Any]"],
+        Dict[str, Union[DataStream[Any, Any, Any]]],
+    ],
+)
 
 
-class DataStreamGroupBuilder(
-    DataStreamBuilder[_GroupType, _ReaderParams, _WriterParams], Generic[_ReaderParams, _WriterParams]
-):
+class DataStreamGroupBuilder(DataStreamBuilder[KeyedStreamLike, _ReaderParams, _WriterParams]):
     def build(self: Self, reader_params: _ReaderParams, writer_params: _WriterParams):
         """Build a data stream from the given parameters."""
-        return DataStreamGroup[_ReaderParams, _WriterParams](
+        return DataStreamGroup[KeyedStreamLike, _ReaderParams, _WriterParams](
             io=self,
             reader_params=reader_params,
             writer_params=writer_params,
@@ -124,19 +131,19 @@ class _UndefinedParams(BaseModel):
 
 
 @dataclass
-class DataStreamGroup(Generic[_ReaderParams, _WriterParams]):
-    io: DataStreamGroupBuilder[_ReaderParams, _WriterParams]
+class DataStreamGroup(Generic[KeyedStreamLike, _ReaderParams, _WriterParams]):
+    io: DataStreamGroupBuilder[KeyedStreamLike, _ReaderParams, _WriterParams]
     reader_params: _ReaderParams
     writer_params: _WriterParams
     read_on_init: bool = field(default=False, init=True, repr=False, kw_only=True)
-    _data_streams: Optional[_GroupType] = field(default=None, init=True, repr=False, kw_only=True)
+    _data_streams: Optional[KeyedStreamLike] = field(default=None, init=True, repr=False, kw_only=True)
 
     def __post_init__(self) -> None:
         if self.read_on_init:
             self.load()
 
     @property
-    def data_streams(self) -> _GroupType:
+    def data_streams(self) -> KeyedStreamLike:
         if self._data_streams is None:
             raise ValueError("Data has not been read yet.")
         return self._data_streams
@@ -145,7 +152,7 @@ class DataStreamGroup(Generic[_ReaderParams, _WriterParams]):
         """Load data into the data stream."""
         self._data_streams = self.read()
 
-    def read(self) -> _GroupType:
+    def read(self) -> KeyedStreamLike:
         """Read data from the data stream."""
         return self.io.read(self.reader_params)
 
@@ -186,11 +193,9 @@ class DataStreamGroup(Generic[_ReaderParams, _WriterParams]):
                 yield from value.walk_data_streams()
 
     @staticmethod
-    def group(data_streams: _GroupType) -> "DataStreamGroup":
+    def group(data_streams: KeyedStreamLike) -> "DataStreamGroup[KeyedStreamLike, _UndefinedParams, _UndefinedParams]":
         """Package data streams into a single data stream group."""
-        if not isinstance(data_streams, dict):
-            raise TypeError("data_streams must be a dictionary")
-        return DataStreamGroup(
+        return DataStreamGroup[KeyedStreamLike, _UndefinedParams, _UndefinedParams](
             io=DataStreamGroupBuilder(),
             reader_params=_UndefinedParams(),
             writer_params=_UndefinedParams(),
