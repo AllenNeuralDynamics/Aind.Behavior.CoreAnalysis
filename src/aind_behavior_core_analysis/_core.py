@@ -190,7 +190,6 @@ class DataStreamGroup(DataStream[KeyedStreamLike, _TReaderParams, _TWriterParams
         return table_str
 
     def walk_data_streams(self) -> Generator[DataStream, None, None]:
-        """Walk through the dataset tree and yield data streams."""
         for value in self.data_streams.values():
             if isinstance(value, DataStream):
                 yield value
@@ -199,7 +198,6 @@ class DataStreamGroup(DataStream[KeyedStreamLike, _TReaderParams, _TWriterParams
 
     @staticmethod
     def group(data_streams: KeyedStreamLike) -> "DataStreamGroup[KeyedStreamLike, _UndefinedParams, _UndefinedParams]":
-        """Package data streams into a single data stream group."""
         return DataStreamGroup[KeyedStreamLike, _UndefinedParams, _UndefinedParams](
             reader=_UnsetReader,
             writer=_UnsetWriter,
@@ -217,22 +215,12 @@ class Dataset:
     data_streams: DataStreamGroup
 
     def print(self, exclude_params: bool = False, print_if_none: bool = False) -> None:
-        """
-        Prints the structure of the dataset using emojis.
-        :param exclude_params: If True, excludes the parameters from the output.
-        :param print_if_none: If True, prints "None" for None values.
-        """
         print_data_stream_tree(self.data_streams, exclude_params=exclude_params, print_if_none=print_if_none)
 
 
 def print_data_stream_tree(
     node: DataStreamGroup | DataStream, prefix="", *, exclude_params: bool = False, print_if_none: bool = False
 ) -> None:
-    """
-    Prints the structure of the data streams using emojis.
-    :param node: The current node (DatasetNode or DataStream).
-    :param prefix: The prefix for the tree structure.
-    """
 
     icon_map = {
         DataStream: "📄",
