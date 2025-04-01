@@ -1,7 +1,7 @@
 import dataclasses
-from typing import Any, Dict, Generator, Generic, Literal, Optional, Protocol, Self, TypeVar, Union, final
+from typing import Any, Dict, Generator, Generic, Literal, Protocol, Self, TypeVar, Union, final
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 _TData = TypeVar("_TData", bound=Any)
 
@@ -19,47 +19,60 @@ class _Writer(Protocol, Generic[_contra_TData, _TWriterParams]):
     def __call__(self, data: _contra_TData, params: _TWriterParams) -> Any: ...
 
 
-class _UnsetReader(_Reader[_TData, _TReaderParams]):
+@final
+class __UnsetReader(_Reader[_TData, _TReaderParams]):
     def __call__(self, params: Any) -> Any:
         raise NotImplementedError("Reader is not set.")
 
 
-class _UnsetWriter(_Writer[_TData, _TWriterParams]):
+@final
+class __UnsetWriter(_Writer[_TData, _TWriterParams]):
     def __call__(self, data: Any, params: Any) -> None:
         raise NotImplementedError("Writer is not set.")
 
 
+@final
+class __UnsetParams(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+
+_UnsetParams: _TReaderParams | _TWriterParams = __UnsetParams()  # type: ignore
+_UnsetReader: __UnsetReader = __UnsetReader()
+_UnsetWriter: __UnsetWriter = __UnsetWriter()
+_UnsetData: Any = object()
+
+
 def is_unset(obj: Any) -> bool:
-    return isinstance(obj, (_UnsetReader, _UnsetWriter))
+    return (obj is _UnsetReader) or (obj is _UnsetWriter) or (obj is _UnsetParams) or (obj is _UnsetData)
 
 
 class DataStream(Generic[_TData, _TReaderParams, _TWriterParams]):
     def __init__(
         self: Self,
-        reader: _Reader[_TData, _TReaderParams] = _UnsetReader(),
-        writer: _Writer[_TData, _TWriterParams] = _UnsetWriter(),
-        reader_params: Optional[_TReaderParams] = None,
-        writer_params: Optional[_TWriterParams] = None,
+        reader: _Reader[_TData, _TReaderParams] = _UnsetReader,
+        writer: _Writer[_TData, _TWriterParams] = _UnsetWriter,
+        reader_params: _TReaderParams = _UnsetParams,
+        writer_params: _TWriterParams = _UnsetParams,
         read_on_init: bool = False,
         **kwargs: Any,
     ) -> None:
         self._reader: _Reader[_TData, _TReaderParams] = reader
         self._writer: _Writer[_TData, _TWriterParams] = writer
-        self._reader_params: Optional[_TReaderParams] = reader_params
-        self._writer_params: Optional[_TWriterParams] = writer_params
-        self._data: Optional[_TData] = None
+        self._reader_params: _TReaderParams = reader_params
+        self._writer_params: _TWriterParams = writer_params
+        self._data: _TData = _UnsetData
         if read_on_init:
             self.load()
 
     @property
     def reader(self) -> _Reader[_TData, _TReaderParams]:
-        if self._reader is None:
+        if is_unset(self._reader):
             raise ValueError("Reader is not set.")
         return self._reader
 
     @property
     def writer(self) -> _Writer[_TData, _TWriterParams]:
-        if self._writer is None:
+        if is_unset(self._writer):
             raise ValueError("Writer is not set.")
         return self._writer
 
@@ -67,7 +80,7 @@ class DataStream(Generic[_TData, _TReaderParams, _TWriterParams]):
         """Bind reader parameters to the data stream."""
         if is_unset(self._reader):
             raise ValueError("Reader is not set. Cannot bind parameters.")
-        if self._reader_params is not None:
+        if not is_unset(self._reader_params):
             raise ValueError("Reader parameters are already set. Cannot bind again.")
         self._reader_params = params
         return self
@@ -76,7 +89,7 @@ class DataStream(Generic[_TData, _TReaderParams, _TWriterParams]):
         """Bind writer parameters to the data stream."""
         if is_unset(self._writer):
             raise ValueError("Writer is not set. Cannot bind parameters.")
-        if self._writer_params is not None:
+        if not is_unset(self._writer_params):
             raise ValueError("Writer parameters are already set. Cannot bind again.")
         self._writer_params = params
         return self
@@ -84,12 +97,12 @@ class DataStream(Generic[_TData, _TReaderParams, _TWriterParams]):
     @property
     def has_data(self) -> bool:
         """Check if the data stream has data."""
-        return self._data is not None
+        return not is_unset(self._data)
 
     @property
     def data(self) -> _TData:
-        if self._data is None:
-            raise ValueError("Data has not been read yet.")
+        if not self.has_data:
+            raise ValueError("Data has not been loaded yet.")
         return self._data
 
     def load(self) -> None:
@@ -100,17 +113,17 @@ class DataStream(Generic[_TData, _TReaderParams, _TWriterParams]):
         """Read data from the data stream."""
         if is_unset(self._reader):
             raise ValueError("Reader is not set. Cannot read data.")
-        if self._reader_params is None:
+        if is_unset(self._reader_params):
             raise ValueError("Reader parameters are not set. Cannot read data.")
         return self._reader(self._reader_params)
 
-    def write(self, data: Optional[_TData] = None) -> None:
+    def write(self, data: _TData = _UnsetData) -> None:
         """Write data to the data stream."""
         if is_unset(self._writer):
             raise ValueError("Writer is not set. Cannot write data.")
-        if self._writer_params is None:
+        if is_unset(self._writer_params):
             raise ValueError("Writer parameters are not set. Cannot write data.")
-        if data is None:
+        if is_unset(data):
             data = self.data
         self._writer(data, self._writer_params)
 
@@ -141,7 +154,7 @@ class DataStreamGroup(DataStream[KeyedStreamLike, _TReaderParams, _TWriterParams
 
     def bind_data_streams(self, data_streams: KeyedStreamLike) -> Self:
         """Bind data streams to the data stream group."""
-        if self._data is not None:
+        if self.has_data:
             raise ValueError("Data streams are already set. Cannot bind again.")
         if not (is_unset(self._reader) and is_unset(self._writer)):
             raise ValueError("reader and writer must be unset to bind data streams directly.")
@@ -149,6 +162,8 @@ class DataStreamGroup(DataStream[KeyedStreamLike, _TReaderParams, _TWriterParams
         return self
 
     def __getitem__(self, key: str) -> Union[DataStream, "DataStreamGroup"]:
+        if not self.has_data:
+            raise ValueError("data streams have not been read yet. Cannot access data streams.")
         if key in self.data_streams:
             return self.data_streams[key]
         else:
@@ -186,10 +201,10 @@ class DataStreamGroup(DataStream[KeyedStreamLike, _TReaderParams, _TWriterParams
     def group(data_streams: KeyedStreamLike) -> "DataStreamGroup[KeyedStreamLike, _UndefinedParams, _UndefinedParams]":
         """Package data streams into a single data stream group."""
         return DataStreamGroup[KeyedStreamLike, _UndefinedParams, _UndefinedParams](
-            reader=_UnsetReader(),
-            writer=_UnsetWriter(),
-            reader_params=None,
-            writer_params=None,
+            reader=_UnsetReader,
+            writer=_UnsetWriter,
+            reader_params=_UnsetParams,
+            writer_params=_UnsetParams,
             read_on_init=False,
         ).bind_data_streams(data_streams)
 
@@ -223,6 +238,10 @@ def print_data_stream_tree(
         DataStream: "📄",
         DataStreamGroup: "📂",
         None: "❓",
+        _UnsetParams: "❓",
+        _UnsetReader: "❓",
+        _UnsetWriter: "❓",
+        _UnsetData: "❓",
         "reader": "⬇️",
         "writer": "⬆️",
     }
@@ -233,12 +252,12 @@ def print_data_stream_tree(
         prefix: str,
         io_type: Literal["reader", "writer"],
         *,
-        print_if_none: bool = False,
+        print_if_unset: bool = False,
         exclude_params: bool = False,
     ) -> str:
-        if not print_if_none and is_unset(reader_or_writer):
+        if not print_if_unset and is_unset(reader_or_writer):
             return ""
-        io_name = reader_or_writer.__name__ if reader_or_writer else "None"
+        io_name = reader_or_writer.__name__ if reader_or_writer else "Unset"
         params = params if reader_or_writer else ""
         _str = f"{prefix}{icon_map[io_type]}{io_name} \n"
         if not exclude_params:
@@ -251,7 +270,7 @@ def print_data_stream_tree(
         node._reader_params,
         prefix,
         "reader",
-        print_if_none=print_if_none,
+        print_if_unset=print_if_none,
         exclude_params=exclude_params,
     )
     s_builder += _print_io(
@@ -259,7 +278,7 @@ def print_data_stream_tree(
         node._writer_params,
         prefix,
         "writer",
-        print_if_none=print_if_none,
+        print_if_unset=print_if_none,
         exclude_params=exclude_params,
     )
     s_builder = s_builder.rstrip("\n")
