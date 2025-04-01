@@ -3,8 +3,7 @@ from typing import Literal, Optional
 import pandas as pd
 from pydantic import Field
 
-from aind_behavior_core_analysis.base import DataStreamBuilder
-from aind_behavior_core_analysis.core import FileReaderParams, FileWriterParams
+from aind_behavior_core_analysis.base_parameters import FileReaderParams, FileWriterParams
 
 
 class CsvReaderParams(FileReaderParams):
@@ -24,6 +23,3 @@ class CsvWriterParams(FileWriterParams):
 
 def csv_writer(data: pd.DataFrame, params: CsvWriterParams) -> None:
     data.to_csv(params.path, sep=params.delimiter, index=params.index, encoding=params.encoding)
-
-
-CsvBuilder = DataStreamBuilder(reader=csv_reader, writer=csv_writer)

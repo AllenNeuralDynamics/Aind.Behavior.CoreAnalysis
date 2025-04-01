@@ -13,8 +13,8 @@ import yaml
 from pydantic import AnyHttpUrl, BaseModel, Field
 from typing_extensions import TypeAliasType
 
-from aind_behavior_core_analysis.base import DataStream, DataStreamBuilder
-from aind_behavior_core_analysis.core import EmptyWriter, FileReaderParams
+from aind_behavior_core_analysis.base import DataStream
+from aind_behavior_core_analysis.base_parameters import FileReaderParams
 
 
 class _DeviceYmlSource(BaseModel):
@@ -111,21 +111,10 @@ def harp_device_reader(params: HarpDeviceReaderParams) -> Dict[str, DataStream[p
             return reader.read(file_or_buf=params.base_path, epoch=params.epoch, keep_type=params.keep_type)
 
         data_streams[name] = DataStream(
-            io=DataStreamBuilder(reader=_reader, writer=EmptyWriter),
+            reader=_reader,
             reader_params=harp.reader._ReaderParams(base_path=None, epoch=params.epoch, keep_type=params.keep_type),
-            writer_params=None,
         )
     return data_streams
-
-
-HarpDeviceBuilder: DataStreamBuilder[
-    Dict[str, DataStream[pd.DataFrame, Any, Any]],
-    HarpDeviceReaderParams,
-    Any,
-] = DataStreamBuilder(
-    reader=harp_device_reader,
-    writer=None,
-)
 
 
 def _make_device_reader(
