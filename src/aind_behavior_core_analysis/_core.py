@@ -221,7 +221,6 @@ class Dataset:
 def print_data_stream_tree(
     node: DataStreamGroup | DataStream, prefix="", *, exclude_params: bool = False, print_if_none: bool = False
 ) -> None:
-
     icon_map = {
         DataStream: "📄",
         DataStreamGroup: "📂",
