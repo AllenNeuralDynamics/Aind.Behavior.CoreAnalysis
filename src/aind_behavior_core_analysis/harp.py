@@ -13,8 +13,8 @@ import yaml
 from pydantic import AnyHttpUrl, BaseModel, Field
 from typing_extensions import TypeAliasType
 
-from aind_behavior_core_analysis.base import DataStream
-from aind_behavior_core_analysis.base_parameters import FileReaderParams
+from aind_behavior_core_analysis._core import DataStream
+from aind_behavior_core_analysis.base import FilePathParams
 
 
 class _DeviceYmlSource(BaseModel):
@@ -53,7 +53,7 @@ else:
     ]
 
 
-class HarpDeviceReaderParams(FileReaderParams):
+class HarpDeviceReaderParams(FilePathParams):
     device_yml_hint: DeviceYmlSource = Field(
         default=DeviceYmlByFile(), description="Device yml hint", validate_default=True
     )

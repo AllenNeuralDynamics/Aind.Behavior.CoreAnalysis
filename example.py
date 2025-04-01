@@ -1,6 +1,5 @@
-from aind_behavior_core_analysis.base import DataStream
+from aind_behavior_core_analysis import Dataset, DataStream, DataStreamGroup
 from aind_behavior_core_analysis.csv import CsvReaderParams, CsvWriterParams, csv_reader, csv_writer
-from aind_behavior_core_analysis.dataset import Dataset, DataStreamGroup
 from aind_behavior_core_analysis.harp import DeviceYmlByRegister0, HarpDeviceReaderParams, harp_device_reader
 from aind_behavior_core_analysis.json import JsonReaderParams, JsonWriterParams, json_reader, json_writer
 
