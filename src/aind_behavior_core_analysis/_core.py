@@ -1,82 +1,49 @@
 import dataclasses
-from typing import Any, Dict, Generator, Generic, Literal, Protocol, Self, TypeVar, Union, final
+from typing import Any, Dict, Generator, Generic, Literal, Self, TypeVar, Union
 
-from pydantic import BaseModel, ConfigDict
-
-_TData = TypeVar("_TData", bound=Any)
-
-_TReaderParams = TypeVar("_TReaderParams", bound=BaseModel, contravariant=True)
-_TWriterParams = TypeVar("_TWriterParams", bound=BaseModel, contravariant=True)
-_co_TData = TypeVar("_co_TData", covariant=True, bound=Any)
-_contra_TData = TypeVar("_contra_TData", contravariant=True, bound=Any)
-
-
-class _Reader(Protocol, Generic[_co_TData, _TReaderParams]):
-    def __call__(self, params: _TReaderParams) -> _co_TData: ...
-
-
-class _Writer(Protocol, Generic[_contra_TData, _TWriterParams]):
-    def __call__(self, data: _contra_TData, params: _TWriterParams) -> Any: ...
-
-
-@final
-class __UnsetReader(_Reader[_TData, _TReaderParams]):
-    def __call__(self, params: Any) -> Any:
-        raise NotImplementedError("Reader is not set.")
-
-
-@final
-class __UnsetWriter(_Writer[_TData, _TWriterParams]):
-    def __call__(self, data: Any, params: Any) -> None:
-        raise NotImplementedError("Writer is not set.")
-
-
-@final
-class __UnsetParams(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-
-_UnsetParams: _TReaderParams | _TWriterParams = __UnsetParams()  # type: ignore
-_UnsetReader: __UnsetReader = __UnsetReader()
-_UnsetWriter: __UnsetWriter = __UnsetWriter()
-_UnsetData: Any = object()
+from aind_behavior_core_analysis import _typing
 
 
 def is_unset(obj: Any) -> bool:
-    return (obj is _UnsetReader) or (obj is _UnsetWriter) or (obj is _UnsetParams) or (obj is _UnsetData)
+    return (
+        (obj is _typing.UnsetReader)
+        or (obj is _typing.UnsetWriter)
+        or (obj is _typing.UnsetParams)
+        or (obj is _typing.UnsetData)
+    )
 
 
-class DataStream(Generic[_TData, _TReaderParams, _TWriterParams]):
+class DataStream(Generic[_typing.TData, _typing.TReaderParams, _typing.TWriterParams]):
     def __init__(
         self: Self,
-        reader: _Reader[_TData, _TReaderParams] = _UnsetReader,
-        writer: _Writer[_TData, _TWriterParams] = _UnsetWriter,
-        reader_params: _TReaderParams = _UnsetParams,
-        writer_params: _TWriterParams = _UnsetParams,
+        reader: _typing.IReader[_typing.TData, _typing.TReaderParams] = _typing.UnsetReader,
+        writer: _typing.IWriter[_typing.TData, _typing.TWriterParams] = _typing.UnsetWriter,
+        reader_params: _typing.TReaderParams = _typing.UnsetParams,
+        writer_params: _typing.TWriterParams = _typing.UnsetParams,
         read_on_init: bool = False,
         **kwargs: Any,
     ) -> None:
-        self._reader: _Reader[_TData, _TReaderParams] = reader
-        self._writer: _Writer[_TData, _TWriterParams] = writer
-        self._reader_params: _TReaderParams = reader_params
-        self._writer_params: _TWriterParams = writer_params
-        self._data: _TData = _UnsetData
+        self._reader: _typing.IReader[_typing.TData, _typing.TReaderParams] = reader
+        self._writer: _typing.IWriter[_typing.TData, _typing.TWriterParams] = writer
+        self._reader_params: _typing.TReaderParams = reader_params
+        self._writer_params: _typing.TWriterParams = writer_params
+        self._data: _typing.TData = _typing.UnsetData
         if read_on_init:
             self.load()
 
     @property
-    def reader(self) -> _Reader[_TData, _TReaderParams]:
+    def reader(self) -> _typing.IReader[_typing.TData, _typing.TReaderParams]:
         if is_unset(self._reader):
             raise ValueError("Reader is not set.")
         return self._reader
 
     @property
-    def writer(self) -> _Writer[_TData, _TWriterParams]:
+    def writer(self) -> _typing.IWriter[_typing.TData, _typing.TWriterParams]:
         if is_unset(self._writer):
             raise ValueError("Writer is not set.")
         return self._writer
 
-    def bind_reader_params(self, params: _TReaderParams) -> Self:
+    def bind_reader_params(self, params: _typing.TReaderParams) -> Self:
         """Bind reader parameters to the data stream."""
         if is_unset(self._reader):
             raise ValueError("Reader is not set. Cannot bind parameters.")
@@ -85,7 +52,7 @@ class DataStream(Generic[_TData, _TReaderParams, _TWriterParams]):
         self._reader_params = params
         return self
 
-    def bind_writer_params(self, params: _TWriterParams) -> Self:
+    def bind_writer_params(self, params: _typing.TWriterParams) -> Self:
         """Bind writer parameters to the data stream."""
         if is_unset(self._writer):
             raise ValueError("Writer is not set. Cannot bind parameters.")
@@ -100,7 +67,7 @@ class DataStream(Generic[_TData, _TReaderParams, _TWriterParams]):
         return not is_unset(self._data)
 
     @property
-    def data(self) -> _TData:
+    def data(self) -> _typing.TData:
         if not self.has_data:
             raise ValueError("Data has not been loaded yet.")
         return self._data
@@ -109,7 +76,7 @@ class DataStream(Generic[_TData, _TReaderParams, _TWriterParams]):
         """Load data into the data stream."""
         self._data = self.read()
 
-    def read(self) -> _TData:
+    def read(self) -> _typing.TData:
         """Read data from the data stream."""
         if is_unset(self._reader):
             raise ValueError("Reader is not set. Cannot read data.")
@@ -117,7 +84,7 @@ class DataStream(Generic[_TData, _TReaderParams, _TWriterParams]):
             raise ValueError("Reader parameters are not set. Cannot read data.")
         return self._reader(self._reader_params)
 
-    def write(self, data: _TData = _UnsetData) -> None:
+    def write(self, data: _typing.TData = _typing.UnsetData) -> None:
         """Write data to the data stream."""
         if is_unset(self._writer):
             raise ValueError("Writer is not set. Cannot write data.")
@@ -140,12 +107,7 @@ KeyedStreamLike = TypeVar(
 )
 
 
-@final
-class _UndefinedParams(BaseModel):
-    pass
-
-
-class DataStreamGroup(DataStream[KeyedStreamLike, _TReaderParams, _TWriterParams]):
+class DataStreamGroup(DataStream[KeyedStreamLike, _typing.TReaderParams, _typing.TWriterParams]):
     @property
     def data_streams(self) -> KeyedStreamLike:
         if self._data is None:
@@ -197,12 +159,14 @@ class DataStreamGroup(DataStream[KeyedStreamLike, _TReaderParams, _TWriterParams
                 yield from value.walk_data_streams()
 
     @staticmethod
-    def group(data_streams: KeyedStreamLike) -> "DataStreamGroup[KeyedStreamLike, _UndefinedParams, _UndefinedParams]":
-        return DataStreamGroup[KeyedStreamLike, _UndefinedParams, _UndefinedParams](
-            reader=_UnsetReader,
-            writer=_UnsetWriter,
-            reader_params=_UnsetParams,
-            writer_params=_UnsetParams,
+    def group(
+        data_streams: KeyedStreamLike,
+    ) -> "DataStreamGroup[KeyedStreamLike, _typing.UndefinedParams, _typing.UndefinedParams]":
+        return DataStreamGroup[KeyedStreamLike, _typing.UndefinedParams, _typing.UndefinedParams](
+            reader=_typing.UnsetReader,
+            writer=_typing.UnsetWriter,
+            reader_params=_typing.UnsetParams,
+            writer_params=_typing.UnsetParams,
             read_on_init=False,
         ).bind_data_streams(data_streams)
 
@@ -225,10 +189,10 @@ def print_data_stream_tree(
         DataStream: "📄",
         DataStreamGroup: "📂",
         None: "❓",
-        _UnsetParams: "❓",
-        _UnsetReader: "❓",
-        _UnsetWriter: "❓",
-        _UnsetData: "❓",
+        _typing.UnsetParams: "❓",
+        _typing.UnsetReader: "❓",
+        _typing.UnsetWriter: "❓",
+        _typing.UnsetData: "❓",
         "reader": "⬇️",
         "writer": "⬆️",
     }
