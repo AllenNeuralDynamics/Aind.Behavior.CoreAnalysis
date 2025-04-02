@@ -1,11 +1,9 @@
-from typing import Any, Generic, Protocol, TypeVar, final
-
-import pydantic
+from typing import Any, Generic, Protocol, TypeVar, final, TypeAlias
 
 TData = TypeVar("TData", bound=Any)
 
-TReaderParams = TypeVar("TReaderParams", bound=pydantic.BaseModel, contravariant=True)
-TWriterParams = TypeVar("TWriterParams", bound=pydantic.BaseModel, contravariant=True)
+TReaderParams = TypeVar("TReaderParams", bound=Any, contravariant=True)
+TWriterParams = TypeVar("TWriterParams", bound=Any, contravariant=True)
 TData_co = TypeVar("TData_co", covariant=True, bound=Any)
 TData_contra = TypeVar("TData_contra", contravariant=True, bound=Any)
 
@@ -30,17 +28,13 @@ class __UnsetWriter(IWriter[TData, TWriterParams]):
         raise NotImplementedError("Writer is not set.")
 
 
-@final
-class __UnsetParams(pydantic.BaseModel):
-    model_config = pydantic.ConfigDict(frozen=True)
+class _UndefinedParams:
+    def __init__(self):
+        raise NotImplementedError("This class is not meant to be instantiated.")
 
 
-UnsetParams: TReaderParams | TWriterParams = __UnsetParams()  # type: ignore
+UnsetParams: TReaderParams | TWriterParams = object()  # type: ignore
 UnsetReader: __UnsetReader = __UnsetReader()
 UnsetWriter: __UnsetWriter = __UnsetWriter()
 UnsetData: Any = object()
-
-
-@final
-class UndefinedParams(pydantic.BaseModel):
-    pass
+UndefinedParams: TypeAlias = _UndefinedParams

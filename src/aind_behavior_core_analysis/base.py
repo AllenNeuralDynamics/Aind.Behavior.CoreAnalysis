@@ -1,8 +1,8 @@
 import abc
+import dataclasses
 import os
 
-from pydantic import BaseModel, Field
 
-
-class FilePathParams(abc.ABC, BaseModel):
-    path: os.PathLike = Field(description="Path to the file")
+@dataclasses.dataclass(frozen=True)
+class FilePathParams(abc.ABC):
+    path: os.PathLike

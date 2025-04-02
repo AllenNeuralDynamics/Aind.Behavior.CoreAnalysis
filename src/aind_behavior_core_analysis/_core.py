@@ -10,6 +10,7 @@ def is_unset(obj: Any) -> bool:
         or (obj is _typing.UnsetWriter)
         or (obj is _typing.UnsetParams)
         or (obj is _typing.UnsetData)
+        or (obj is _typing.UndefinedParams)
     )
 
 
