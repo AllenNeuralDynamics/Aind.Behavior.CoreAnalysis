@@ -10,7 +10,7 @@ def is_unset(obj: Any) -> bool:
         or (obj is _typing.UnsetWriter)
         or (obj is _typing.UnsetParams)
         or (obj is _typing.UnsetData)
-        or (obj is _typing.UndefinedParams)
+        or (obj is _typing.NullParams)
     )
 
 
@@ -162,8 +162,8 @@ class DataStreamGroup(DataStream[KeyedStreamLike, _typing.TReaderParams, _typing
     @staticmethod
     def group(
         data_streams: KeyedStreamLike,
-    ) -> "DataStreamGroup[KeyedStreamLike, _typing.UndefinedParams, _typing.UndefinedParams]":
-        return DataStreamGroup[KeyedStreamLike, _typing.UndefinedParams, _typing.UndefinedParams](
+    ) -> "DataStreamGroup[KeyedStreamLike, _typing.NullParams, _typing.NullParams]":
+        return DataStreamGroup[KeyedStreamLike, _typing.NullParams, _typing.NullParams](
             reader=_typing.UnsetReader,
             writer=_typing.UnsetWriter,
             reader_params=_typing.UnsetParams,

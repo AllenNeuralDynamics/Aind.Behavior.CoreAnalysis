@@ -28,7 +28,7 @@ class __UnsetWriter(IWriter[TData, TWriterParams]):
         raise NotImplementedError("Writer is not set.")
 
 
-class _UndefinedParams:
+class _NullParams:
     def __init__(self):
         raise NotImplementedError("This class is not meant to be instantiated.")
 
@@ -37,4 +37,4 @@ UnsetParams: TReaderParams | TWriterParams = object()  # type: ignore
 UnsetReader: __UnsetReader = __UnsetReader()
 UnsetWriter: __UnsetWriter = __UnsetWriter()
 UnsetData: Any = object()
-UndefinedParams: TypeAlias = _UndefinedParams
+NullParams: TypeAlias = _NullParams

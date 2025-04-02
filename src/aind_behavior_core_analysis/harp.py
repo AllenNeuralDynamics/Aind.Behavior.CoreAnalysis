@@ -4,6 +4,7 @@ import os
 from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, Dict, List, Literal, Optional, TextIO, Union
+from aind_behavior_core_analysis import _typing
 
 import harp
 import harp.reader
@@ -65,7 +66,9 @@ class HarpDeviceReaderParams(FilePathParams):
     )
 
 
-def harp_device_reader(params: HarpDeviceReaderParams) -> Dict[str, DataStream[pd.DataFrame, Any, Any]]:
+def harp_device_reader(
+    params: HarpDeviceReaderParams,
+) -> Dict[str, DataStream[pd.DataFrame, harp.reader._ReaderParams, _typing.NullParams]]:
     _yml_stream: str | os.PathLike | TextIO
 
     # If WhoAmI is provided we xref it to the device list to find the correct device.yml
@@ -103,7 +106,7 @@ def harp_device_reader(params: HarpDeviceReaderParams) -> Dict[str, DataStream[p
         raise ValueError("Invalid device yml hint")
 
     reader = _make_device_reader(_yml_stream, params)
-    data_streams: Dict[str, DataStream[pd.DataFrame, Any, Any]] = {}
+    data_streams: Dict[str, DataStream[pd.DataFrame, harp.reader._ReaderParams, _typing.NullParams]] = {}
 
     for name, reader in reader.registers.items():
         # todo we can add custom file name interpolation here
