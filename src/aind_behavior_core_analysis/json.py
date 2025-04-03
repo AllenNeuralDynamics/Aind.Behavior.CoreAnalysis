@@ -1,12 +1,12 @@
 import json
-
-from pydantic import Field
-
-from aind_behavior_core_analysis.base import FilePathParams
-
-
-class JsonReaderParams(FilePathParams):
-    encoding: str = Field(default="UTF-8", description="Encoding used in the JSON file")
+import os
+import dataclasses
+from typing import Callable, Generic, TypeVar, List
+import pydantic
+@dataclasses.dataclass
+class JsonReaderParams:
+    path: os.PathLike
+    encoding: str = "UTF-8"
 
 
 def json_reader(params: JsonReaderParams) -> dict[str, str]:
@@ -14,10 +14,11 @@ def json_reader(params: JsonReaderParams) -> dict[str, str]:
         data = json.load(file)
     return data
 
-
-class JsonWriterParams(FilePathParams):
-    indent: int = Field(default=4, description="Indentation level for JSON file")
-    encoding: str = Field(default="UTF-8", description="Encoding used in the JSON file")
+@dataclasses.dataclass
+class JsonWriterParams:
+    path: os.PathLike
+    indent: int = 4
+    encoding: str = "UTF-8"
 
 
 def json_writer(data: object, params: JsonWriterParams) -> None:
