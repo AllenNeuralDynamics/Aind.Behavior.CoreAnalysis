@@ -1,4 +1,4 @@
-from typing import Any, Generic, Protocol, TypeVar, final, TypeAlias
+from typing import Any, Generic, Protocol, TypeAlias, TypeVar, final
 
 TData = TypeVar("TData", bound=Any)
 

@@ -1,4 +1,4 @@
-from ._core import Dataset, DataStream, DataStreamGroup, is_unset, print_data_stream_tree, KeyedStreamLike
+from ._core import Dataset, DataStream, DataStreamGroup, KeyedStreamLike, is_unset, print_data_stream_tree
 
 __version__ = "0.0.0"
 

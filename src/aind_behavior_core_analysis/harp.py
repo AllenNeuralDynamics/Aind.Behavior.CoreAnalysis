@@ -1,10 +1,10 @@
+import dataclasses
 import datetime
 import io
 import os
 from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, Dict, List, Literal, Optional, TextIO, Union
-from aind_behavior_core_analysis import _typing
 
 import harp
 import harp.reader
@@ -14,8 +14,8 @@ import yaml
 from pydantic import AnyHttpUrl, BaseModel, Field
 from typing_extensions import TypeAliasType
 
+from aind_behavior_core_analysis import _typing
 from aind_behavior_core_analysis._core import DataStream
-import dataclasses
 
 
 class _DeviceYmlSource(BaseModel):

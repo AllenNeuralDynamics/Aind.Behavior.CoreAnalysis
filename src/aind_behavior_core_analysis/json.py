@@ -1,8 +1,11 @@
+import dataclasses
 import json
 import os
-import dataclasses
-from typing import Callable, Generic, TypeVar, List
+from typing import Generic, List, Type, TypeVar
+
 import pydantic
+
+
 @dataclasses.dataclass
 class JsonReaderParams:
     path: os.PathLike
@@ -13,6 +16,7 @@ def json_reader(params: JsonReaderParams) -> dict[str, str]:
     with open(params.path, "r", encoding=params.encoding) as file:
         data = json.load(file)
     return data
+
 
 @dataclasses.dataclass
 class JsonWriterParams:
