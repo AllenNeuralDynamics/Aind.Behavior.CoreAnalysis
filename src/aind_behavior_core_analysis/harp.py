@@ -1,4 +1,3 @@
-import dataclasses
 import datetime
 import io
 import os
@@ -11,11 +10,13 @@ import harp.reader
 import pandas as pd
 import requests
 import yaml
-from pydantic import AnyHttpUrl, BaseModel, Field
+from pydantic import AnyHttpUrl, BaseModel, Field, dataclasses
 from typing_extensions import TypeAliasType
 
 from aind_behavior_core_analysis import _typing
 from aind_behavior_core_analysis._core import DataStream
+
+from . import FilePathBaseParam
 
 
 class _DeviceYmlSource(BaseModel):
@@ -55,8 +56,7 @@ else:
 
 
 @dataclasses.dataclass
-class HarpDeviceReaderParams:
-    path: os.PathLike
+class HarpDeviceReaderParams(FilePathBaseParam):
     device_yml_hint: DeviceYmlSource = Field(
         default=DeviceYmlByFile(), description="Device yml hint", validate_default=True
     )
@@ -132,7 +132,7 @@ def _make_device_reader(
         name: harp.reader._create_register_handler(
             device,
             name,
-            harp.reader._ReaderParams(base_path, params.epoch, params.keep_type),
+            harp.reader._ReaderParams(base_path=base_path, epoch=params.epoch, keep_type=params.keep_type),
         )
         for name in device.registers.keys()
     }

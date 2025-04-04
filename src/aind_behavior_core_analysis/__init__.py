@@ -1,4 +1,12 @@
-from ._core import Dataset, DataStream, DataStreamGroup, KeyedStreamLike, is_unset, print_data_stream_tree
+from ._core import (
+    Dataset,
+    DataStream,
+    DataStreamGroup,
+    FilePathBaseParam,
+    KeyedStreamLike,
+    is_unset,
+    print_data_stream_tree,
+)
 
 __version__ = "0.0.0"
 
@@ -10,4 +18,5 @@ __all__ = [
     "Dataset",
     "print_data_stream_tree",
     "KeyedStreamLike",
+    "FilePathBaseParam"
 ]

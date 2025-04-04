@@ -1,13 +1,13 @@
-import os
 from dataclasses import dataclass
 from typing import Literal, Optional
 
 import pandas as pd
 
+from . import FilePathBaseParam
+
 
 @dataclass
-class CsvReaderParams:
-    path: os.PathLike
+class CsvReaderParams(FilePathBaseParam):
     delimiter: Optional[str] = None
     strict_header: bool = True
 
@@ -17,8 +17,7 @@ def csv_reader(params: CsvReaderParams) -> pd.DataFrame:
 
 
 @dataclass
-class CsvWriterParams:
-    path: os.PathLike
+class CsvWriterParams(FilePathBaseParam):
     delimiter: str = ","
     encoding: Optional[Literal["utf-8"]] = "utf-8"
     index: bool = False

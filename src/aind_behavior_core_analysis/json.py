@@ -5,6 +5,8 @@ from typing import Generic, List, Type, TypeVar
 
 import pydantic
 
+from . import FilePathBaseParam
+
 
 @dataclasses.dataclass
 class JsonReaderParams:
@@ -40,8 +42,7 @@ _TModel = TypeVar("_TModel", bound=pydantic.BaseModel)
 
 
 @dataclasses.dataclass
-class MultiLinePydanticModelReaderParams(Generic[_TModel]):
-    path: os.PathLike
+class MultiLinePydanticModelReaderParams(FilePathBaseParam, Generic[_TModel]):
     model: Type[_TModel]
     encoding: str = "UTF-8"
 
@@ -49,4 +50,5 @@ class MultiLinePydanticModelReaderParams(Generic[_TModel]):
 def multi_line_pydantic_model_reader(params: MultiLinePydanticModelReaderParams[_TModel]) -> List[_TModel]:
     with open(params.path, "r", encoding=params.encoding) as file:
         model_ls = [params.model.model_validate_json(line) for line in file]
+
     return model_ls

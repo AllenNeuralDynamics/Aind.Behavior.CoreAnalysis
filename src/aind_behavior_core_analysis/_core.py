@@ -1,4 +1,6 @@
+import abc
 import dataclasses
+import os
 from typing import Any, Dict, Generator, Generic, Literal, Self, TypeVar, Union
 
 from aind_behavior_core_analysis import _typing
@@ -21,7 +23,6 @@ class DataStream(Generic[_typing.TData, _typing.TReaderParams, _typing.TWriterPa
         writer: _typing.IWriter[_typing.TData, _typing.TWriterParams] = _typing.UnsetWriter,
         reader_params: _typing.TReaderParams = _typing.UnsetParams,
         writer_params: _typing.TWriterParams = _typing.UnsetParams,
-        read_on_init: bool = False,
         **kwargs: Any,
     ) -> None:
         self._reader: _typing.IReader[_typing.TData, _typing.TReaderParams] = reader
@@ -29,8 +30,6 @@ class DataStream(Generic[_typing.TData, _typing.TReaderParams, _typing.TWriterPa
         self._reader_params: _typing.TReaderParams = reader_params
         self._writer_params: _typing.TWriterParams = writer_params
         self._data: _typing.TData = _typing.UnsetData
-        if read_on_init:
-            self.load()
 
     @property
     def reader(self) -> _typing.IReader[_typing.TData, _typing.TReaderParams]:
@@ -168,7 +167,6 @@ class DataStreamGroup(DataStream[KeyedStreamLike, _typing.TReaderParams, _typing
             writer=_typing.UnsetWriter,
             reader_params=_typing.UnsetParams,
             writer_params=_typing.UnsetParams,
-            read_on_init=False,
         ).bind_data_streams(data_streams)
 
 
@@ -243,3 +241,8 @@ def print_data_stream_tree(
             for key, child in node.data_streams.items():
                 print(f"{prefix}{icon_map[type(child)]} {key}")
                 print_data_stream_tree(child, prefix + "    ", exclude_params=exclude_params)
+
+
+@dataclasses.dataclass
+class FilePathBaseParam(abc.ABC):
+    path: os.PathLike
