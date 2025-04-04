@@ -18,5 +18,5 @@ __all__ = [
     "Dataset",
     "print_data_stream_tree",
     "KeyedStreamLike",
-    "FilePathBaseParam"
+    "FilePathBaseParam",
 ]
