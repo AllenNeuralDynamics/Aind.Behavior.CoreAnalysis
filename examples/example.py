@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from aind_behavior_services.data_types import SoftwareEvent
 
 from aind_behavior_core_analysis import Dataset, DataStreamGroup
@@ -7,7 +9,6 @@ from aind_behavior_core_analysis.json import (
     multi_line_pydantic_model_df_reader,
 )
 from aind_behavior_core_analysis.mux import MuxReaderParams, file_pattern_mux_reader
-from pathlib import Path
 
 dataset_root = Path(r"path/to/dataset/root")
 my_dataset = Dataset(
@@ -41,12 +42,12 @@ my_dataset = Dataset(
 )
 
 
-my_dataset.data_streams["HarpBehavior"].load()
-print(my_dataset.data_streams["HarpBehavior"]["WhoAmI"].read())
+my_dataset.data_streams.get_stream("HarpBehavior").load()
+print(my_dataset.data_streams.get_stream("HarpBehavior").get_stream("WhoAmI").read())
 
-my_dataset.data_streams["SoftwareEvents"].load()
-my_dataset.data_streams["SoftwareEvents"]["Block"].load()
-print(my_dataset.data_streams["SoftwareEvents"])
-print(my_dataset.data_streams["SoftwareEvents"]["DepletionVariable"].read())
+my_dataset.data_streams.get_stream("SoftwareEvents").load()
+my_dataset.data_streams.get_stream("SoftwareEvents").get_stream("Block").load()
+print(my_dataset.data_streams.get_stream("SoftwareEvents"))
+print(my_dataset.data_streams.get_stream("SoftwareEvents").get_stream("DepletionVariable").read())
 
 # my_dataset.print()

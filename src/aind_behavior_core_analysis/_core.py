@@ -3,6 +3,8 @@ import dataclasses
 import os
 from typing import Any, Dict, Generator, Generic, Literal, Self, TypeVar, Union
 
+from typing_extensions import override
+
 from aind_behavior_core_analysis import _typing
 
 
@@ -60,6 +62,10 @@ class DataStream(Generic[_typing.TData, _typing.TReaderParams, _typing.TWriterPa
             raise ValueError("Writer parameters are already set. Cannot bind again.")
         self._writer_params = params
         return self
+
+    def get_stream(self, key: str) -> Union["DataStream", "DataStreamGroup"]:
+        """Get a data stream by key."""
+        raise NotImplementedError("This method is not implemented for DataStream.")
 
     @property
     def has_data(self) -> bool:
@@ -123,7 +129,9 @@ class DataStreamGroup(DataStream[KeyedStreamLike, _typing.TReaderParams, _typing
         self._data = data_streams
         return self
 
-    def __getitem__(self, key: str) -> Union[DataStream, "DataStreamGroup"]:
+    @override
+    def get_stream(self, key: str) -> Union[DataStream, "DataStreamGroup"]:
+        """Get a data stream by key."""
         if not self.has_data:
             raise ValueError("data streams have not been read yet. Cannot access data streams.")
         if key in self.data_streams:
