@@ -1,7 +1,7 @@
 import abc
 import dataclasses
 import os
-from typing import Any, Dict, Generator, Generic, Literal, Self, TypeVar, Union
+from typing import Any, Dict, Generator, Generic, Literal, Self, TypeVar, Union, Optional, List, Tuple
 
 from typing_extensions import override
 
@@ -77,9 +77,10 @@ class DataStream(Generic[_typing.TData, _typing.TReaderParams, _typing.TWriterPa
             raise ValueError("Data has not been loaded yet.")
         return self._data
 
-    def load(self) -> None:
+    def load(self) -> Self:
         """Load data into the data stream."""
         self._data = self.read()
+        return self
 
     def read(self) -> _typing.TData:
         """Read data from the data stream."""
@@ -148,15 +149,25 @@ class DataStreamGroup(DataStream[KeyedStreamLike, _typing.TReaderParams, _typing
         else:
             raise KeyError(f"Key '{key}' not found in data streams.")
 
-    def load_branch(self) -> None:
+    def load_branch(self, strict: bool = False) -> Optional[List[Tuple[str, DataStream, Exception]]]:
         """Recursively load all data streams in the branch using breadth-first traversal.
 
         This method first loads the data for the current node, then proceeds to load
         all child nodes in a breadth-first manner.
         """
-        self.load()
-        for stream in self.walk_data_streams():
-            stream.load()
+        if strict:
+            self.load()
+            for _, stream in self.walk_data_streams():
+                stream.load()
+            return None
+        else:
+            exceptions = []
+            for key, stream in self.walk_data_streams():
+                try:
+                    stream.load()
+                except Exception as e:
+                    exceptions.append((key, stream, e))
+            return exceptions
 
     def __str__(self):
         table = []
@@ -184,10 +195,10 @@ class DataStreamGroup(DataStream[KeyedStreamLike, _typing.TReaderParams, _typing
 
         return table_str
 
-    def walk_data_streams(self) -> Generator[DataStream, None, None]:
-        for value in self.data_streams.values():
+    def walk_data_streams(self) -> Generator[Tuple[str, DataStream], None, None]:
+        for key, value in self.data_streams.items():
             if isinstance(value, DataStream):
-                yield value
+                yield (key, value)
             if isinstance(value, DataStreamGroup):
                 yield from value.walk_data_streams()
 
