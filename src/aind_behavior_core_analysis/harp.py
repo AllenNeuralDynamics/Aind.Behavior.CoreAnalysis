@@ -30,7 +30,7 @@ class DeviceYmlByWhoAmI(_DeviceYmlSource):
 
 class DeviceYmlByFile(_DeviceYmlSource):
     method: Literal["file"] = "file"
-    path: os.PathLike | str = Field(default=".", description="Path to the device yml file")
+    path: Optional[os.PathLike | str] = Field(default=None, description="Path to the device yml file")
 
 
 class DeviceYmlByUrl(_DeviceYmlSource):
@@ -92,8 +92,11 @@ def harp_device_reader(
 
     # If a device.yml is provided we trivially pass it to the reader
     elif isinstance(params.device_yml_hint, DeviceYmlByFile):
-        with open(params.device_yml_hint.path, "r", encoding="utf-8") as file:
-            _yml_stream = file.read()
+        if params.device_yml_hint.path is None:
+            path = Path(params.path) / "device.yml"
+        else:
+            path = Path(params.device_yml_hint.path)
+        _yml_stream = io.TextIOWrapper(open(path, "rb"))
 
     # If a device.yml URL is provided we fetch it and pass it to the reader
     elif isinstance(params.device_yml_hint, DeviceYmlByUrl):
@@ -110,11 +113,11 @@ def harp_device_reader(
     reader = _make_device_reader(_yml_stream, params)
     data_streams: Dict[str, DataStream[pd.DataFrame, harp.reader._ReaderParams, _typing.UnsetParamsType]] = {}
 
-    for name, reader in reader.registers.items():
+    for name, reg_reader in reader.registers.items():
         # todo we can add custom file name interpolation here
-        def _reader(params: harp.reader._ReaderParams):
-            return reader.read(file_or_buf=params.base_path, epoch=params.epoch, keep_type=params.keep_type)
-
+        def _reader(params: harp.reader._ReaderParams, reg_reader: harp.reader.RegisterReader = reg_reader) -> pd.DataFrame:
+            return reg_reader.read(file_or_buf=params.base_path, epoch=params.epoch, keep_type=params.keep_type)
+    
         data_streams[name] = DataStream(
             reader=_reader,
             reader_params=harp.reader._ReaderParams(base_path=None, epoch=params.epoch, keep_type=params.keep_type),
