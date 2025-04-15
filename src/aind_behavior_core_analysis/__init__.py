@@ -4,6 +4,7 @@ from ._core import (
     DataStreamGroup,
     FilePathBaseParam,
     KeyedStreamLike,
+    StaticDataStreamGroup,
     is_unset,
     print_data_stream_tree,
 )
@@ -14,6 +15,7 @@ __all__ = [
     "__version__",
     "DataStream",
     "DataStreamGroup",
+    "StaticDataStreamGroup",
     "is_unset",
     "Dataset",
     "print_data_stream_tree",

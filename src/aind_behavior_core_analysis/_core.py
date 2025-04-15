@@ -14,7 +14,6 @@ def is_unset(obj: Any) -> bool:
         or (obj is _typing.UnsetWriter)
         or (obj is _typing.UnsetParams)
         or (obj is _typing.UnsetData)
-        or (obj is _typing.NullParams)
     )
 
 
@@ -100,6 +99,16 @@ class DataStream(Generic[_typing.TData, _typing.TReaderParams, _typing.TWriterPa
             data = self.data
         self._writer(data, self._writer_params)
 
+    def __str__(self):
+        return (
+            f"DataStream("
+            f"reader={self._reader}, "
+            f"writer={self._writer}, "
+            f"reader_params={self._reader_params}, "
+            f"writer_params={self._writer_params}, "
+            f"data_type={self._data.__class__.__name__ if self.has_data else 'Not Loaded'}"
+        )
+
 
 # Type hinting doesn't resolve subtypes of generics apparently.
 # We pass the explicit, resolved, inner generics.
@@ -139,12 +148,28 @@ class DataStreamGroup(DataStream[KeyedStreamLike, _typing.TReaderParams, _typing
         else:
             raise KeyError(f"Key '{key}' not found in data streams.")
 
+    def load_branch(self) -> None:
+        """Recursively load all data streams in the branch using breadth-first traversal.
+
+        This method first loads the data for the current node, then proceeds to load
+        all child nodes in a breadth-first manner.
+        """
+        self.load()
+        for stream in self.walk_data_streams():
+            stream.load()
+
     def __str__(self):
         table = []
         table.append(["Stream Name", "Stream Type", "Is Loaded"])
         table.append(["-" * 20, "-" * 20, "-" * 20])
+
+        if not self.has_data:
+            return "DataStreamGroup has not been loaded yet."
+
         for key, value in self.data_streams.items():
-            table.append([key, value.__class__.__name__, "Yes" if value._data is not None else "No"])
+            table.append(
+                [key, value.data.__class__.__name__ if value.has_data else "Unknown", "Yes" if value.has_data else "No"]
+            )
 
         max_lengths = [max(len(str(row[i])) for row in table) for i in range(len(table[0]))]
 
@@ -163,19 +188,29 @@ class DataStreamGroup(DataStream[KeyedStreamLike, _typing.TReaderParams, _typing
         for value in self.data_streams.values():
             if isinstance(value, DataStream):
                 yield value
-            elif isinstance(value, DataStreamGroup):
+            if isinstance(value, DataStreamGroup):
                 yield from value.walk_data_streams()
 
-    @staticmethod
-    def group(
+
+# Todo I think this could be made much easier by passing a "default_reader" that returns the data stream directly. For now I will leave it like this.
+class StaticDataStreamGroup(DataStreamGroup[KeyedStreamLike, _typing.UnsetParamsType, _typing.TWriterParams]):
+    def __init__(
+        self,
         data_streams: KeyedStreamLike,
-    ) -> "DataStreamGroup[KeyedStreamLike, _typing.NullParams, _typing.NullParams]":
-        return DataStreamGroup[KeyedStreamLike, _typing.NullParams, _typing.NullParams](
+        writer: _typing.IWriter[KeyedStreamLike, _typing.TWriterParams] = _typing.UnsetWriter,
+        writer_params: _typing.TWriterParams = _typing.UnsetParams,
+    ) -> None:
+        """Initializes a special DataStreamGroup where the data streams are passed directly, without a reader."""
+        super().__init__(
             reader=_typing.UnsetReader,
-            writer=_typing.UnsetWriter,
+            writer=writer,
             reader_params=_typing.UnsetParams,
-            writer_params=_typing.UnsetParams,
-        ).bind_data_streams(data_streams)
+            writer_params=writer_params,
+        )
+        self.bind_data_streams(data_streams)
+
+    def read(self) -> KeyedStreamLike:
+        return self.data_streams
 
 
 @dataclasses.dataclass
