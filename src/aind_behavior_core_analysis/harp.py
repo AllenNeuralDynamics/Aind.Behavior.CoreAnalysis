@@ -78,7 +78,7 @@ def harp_device_reader(
         _yml_stream = io.TextIOWrapper(fetch_yml_from_who_am_i(params.device_yml_hint.who_am_i))
 
     # If we are allowed to infer the WhoAmI, we try to find it, and
-    # we it is simply a subset of the previous case
+    # it is simply a subset of the previous case
     elif isinstance(params.device_yml_hint, DeviceYmlByRegister0):
         _reg_0_hint: List[os.PathLike] = []
         for pattern in params.device_yml_hint.register0_glob_pattern:
