@@ -7,7 +7,9 @@ from aind_behavior_core_analysis.json import (
     multi_line_pydantic_model_df_reader,
 )
 from aind_behavior_core_analysis.mux import MuxReaderParams, file_pattern_mux_reader
+from pathlib import Path
 
+dataset_root = Path(r"path/to/dataset/root")
 my_dataset = Dataset(
     name="my_dataset",
     version="1.0",
@@ -17,14 +19,14 @@ my_dataset = Dataset(
             "HarpBehavior": DataStreamGroup(
                 reader=harp_device_reader,
                 reader_params=HarpDeviceReaderParams(
-                    path=r"C:\Users\bruno.cruz\Downloads\789903_2025-04-02T182737Z\behavior\Behavior.harp",
+                    path=dataset_root / "behavior/Behavior.harp",
                     device_yml_hint=DeviceYmlByRegister0(),
                 ),
             ),
             "SoftwareEvents": DataStreamGroup(
                 reader=file_pattern_mux_reader,
                 reader_params=MuxReaderParams(
-                    path=r"C:\Users\bruno.cruz\Downloads\789903_2025-04-02T182737Z\behavior\SoftwareEvents",
+                    path=dataset_root / "behavior/SoftwareEvents",
                     glob_pattern=["*.json"],
                     inner_reader=multi_line_pydantic_model_df_reader,
                     inner_reader_params=MultiLinePydanticModelDfReaderParams(
