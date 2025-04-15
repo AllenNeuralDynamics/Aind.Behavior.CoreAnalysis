@@ -99,6 +99,16 @@ class DataStream(Generic[_typing.TData, _typing.TReaderParams, _typing.TWriterPa
             data = self.data
         self._writer(data, self._writer_params)
 
+    def __str__(self):
+        return (
+            f"DataStream("
+            f"reader={self._reader}, "
+            f"writer={self._writer}, "
+            f"reader_params={self._reader_params}, "
+            f"writer_params={self._writer_params}, "
+            f"data_type={self._data.__class__.__name__ if self.has_data else 'Not Loaded'}"
+        )
+
 
 # Type hinting doesn't resolve subtypes of generics apparently.
 # We pass the explicit, resolved, inner generics.
@@ -138,6 +148,16 @@ class DataStreamGroup(DataStream[KeyedStreamLike, _typing.TReaderParams, _typing
         else:
             raise KeyError(f"Key '{key}' not found in data streams.")
 
+    def load_branch(self) -> None:
+        """Recursively load all data streams in the branch using breadth-first traversal.
+
+        This method first loads the data for the current node, then proceeds to load
+        all child nodes in a breadth-first manner.
+        """
+        self.load()
+        for stream in self.walk_data_streams():
+            stream.load()
+
     def __str__(self):
         table = []
         table.append(["Stream Name", "Stream Type", "Is Loaded"])
@@ -168,19 +188,29 @@ class DataStreamGroup(DataStream[KeyedStreamLike, _typing.TReaderParams, _typing
         for value in self.data_streams.values():
             if isinstance(value, DataStream):
                 yield value
-            elif isinstance(value, DataStreamGroup):
+            if isinstance(value, DataStreamGroup):
                 yield from value.walk_data_streams()
 
-    @staticmethod
-    def group(
+
+# Todo I think this could be made much easier by passing a "default_reader" that returns the data stream directly. For now I will leave it like this.
+class StaticDataStreamGroup(DataStreamGroup[KeyedStreamLike, _typing.UnsetParamsType, _typing.TWriterParams]):
+    def __init__(
+        self,
         data_streams: KeyedStreamLike,
-    ) -> "DataStreamGroup[KeyedStreamLike, _typing.UnsetParamsType, _typing.UnsetParamsType]":
-        return DataStreamGroup[KeyedStreamLike, _typing.UnsetParamsType, _typing.UnsetParamsType](
+        writer: _typing.IWriter[KeyedStreamLike, _typing.TWriterParams] = _typing.UnsetWriter,
+        writer_params: _typing.TWriterParams = _typing.UnsetParams,
+    ) -> None:
+        """Initializes a special DataStreamGroup where the data streams are passed directly, without a reader."""
+        super().__init__(
             reader=_typing.UnsetReader,
-            writer=_typing.UnsetWriter,
+            writer=writer,
             reader_params=_typing.UnsetParams,
-            writer_params=_typing.UnsetParams,
-        ).bind_data_streams(data_streams)
+            writer_params=writer_params,
+        )
+        self.bind_data_streams(data_streams)
+
+    def read(self) -> KeyedStreamLike:
+        return self.data_streams
 
 
 @dataclasses.dataclass
