@@ -21,7 +21,8 @@ dynamic = ["version", "readme"]
 
 dependencies = [
     'harp-python',
-    'aind_behavior_services>=0.8.0',
+    'pydantic',
+    'aind_behavior_services',
     'pyyaml',
     'requests',
 ]
