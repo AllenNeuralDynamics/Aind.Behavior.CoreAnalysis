@@ -115,9 +115,11 @@ def harp_device_reader(
 
     for name, reg_reader in reader.registers.items():
         # todo we can add custom file name interpolation here
-        def _reader(params: harp.reader._ReaderParams, reg_reader: harp.reader.RegisterReader = reg_reader) -> pd.DataFrame:
-            return reg_reader.read(file_or_buf=params.base_path, epoch=params.epoch, keep_type=params.keep_type)
-    
+        def _reader(
+            params: harp.reader._ReaderParams, reg_reader: harp.reader.RegisterReader = reg_reader
+        ) -> pd.DataFrame:
+            return reg_reader.read(params.base_path, epoch=params.epoch, keep_type=params.keep_type)
+
         data_streams[name] = DataStream(
             reader=_reader,
             reader_params=harp.reader._ReaderParams(base_path=None, epoch=params.epoch, keep_type=params.keep_type),
