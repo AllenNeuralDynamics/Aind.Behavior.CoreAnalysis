@@ -18,7 +18,7 @@ class MuxReaderParams(FilePathBaseParam, Generic[_typing.TData_co, _TPathAwareRe
 
 def file_pattern_mux_reader(
     params: MuxReaderParams[_typing.TData, _TPathAwareReaderParams],
-) -> Dict[str, DataStream[_typing.TData, _TPathAwareReaderParams, _typing.NullParams]]:
+) -> Dict[str, DataStream[_typing.TData, _TPathAwareReaderParams, _typing.UnsetParamsType]]:
     _hits: List[Path] = []
     for pattern in params.glob_pattern:
         _hits.extend(list(Path(params.path).glob(pattern)))
@@ -27,13 +27,13 @@ def file_pattern_mux_reader(
     if len(list(set([f.stem for f in _hits]))) != len(_hits):
         raise ValueError(f"Duplicate stems found in glob pattern: {params.glob_pattern}.")
 
-    _out: Dict[str, DataStream[_typing.TData, _TPathAwareReaderParams, _typing.NullParams]] = {}
+    _out: Dict[str, DataStream[_typing.TData, _TPathAwareReaderParams, _typing.UnsetParamsType]] = {}
     for f in _hits:
         new_params = dataclasses.replace(
             params.inner_reader_params,
             path=f,
         )
-        _out[f.stem] = DataStream[_typing.TData, _TPathAwareReaderParams, _typing.NullParams](
+        _out[f.stem] = DataStream[_typing.TData, _TPathAwareReaderParams, _typing.UnsetParamsType](
             reader=params.inner_reader, reader_params=new_params
         )
     return _out

@@ -70,7 +70,7 @@ class HarpDeviceReaderParams(FilePathBaseParam):
 
 def harp_device_reader(
     params: HarpDeviceReaderParams,
-) -> Dict[str, DataStream[pd.DataFrame, harp.reader._ReaderParams, _typing.NullParams]]:
+) -> Dict[str, DataStream[pd.DataFrame, harp.reader._ReaderParams, _typing.UnsetParamsType]]:
     _yml_stream: str | os.PathLike | TextIO
 
     # If WhoAmI is provided we xref it to the device list to find the correct device.yml
@@ -108,7 +108,7 @@ def harp_device_reader(
         raise ValueError("Invalid device yml hint")
 
     reader = _make_device_reader(_yml_stream, params)
-    data_streams: Dict[str, DataStream[pd.DataFrame, harp.reader._ReaderParams, _typing.NullParams]] = {}
+    data_streams: Dict[str, DataStream[pd.DataFrame, harp.reader._ReaderParams, _typing.UnsetParamsType]] = {}
 
     for name, reader in reader.registers.items():
         # todo we can add custom file name interpolation here

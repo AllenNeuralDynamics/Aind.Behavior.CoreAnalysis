@@ -14,7 +14,6 @@ def is_unset(obj: Any) -> bool:
         or (obj is _typing.UnsetWriter)
         or (obj is _typing.UnsetParams)
         or (obj is _typing.UnsetData)
-        or (obj is _typing.NullParams)
     )
 
 
@@ -143,8 +142,14 @@ class DataStreamGroup(DataStream[KeyedStreamLike, _typing.TReaderParams, _typing
         table = []
         table.append(["Stream Name", "Stream Type", "Is Loaded"])
         table.append(["-" * 20, "-" * 20, "-" * 20])
+
+        if not self.has_data:
+            return "DataStreamGroup has not been loaded yet."
+
         for key, value in self.data_streams.items():
-            table.append([key, value.__class__.__name__, "Yes" if value._data is not None else "No"])
+            table.append(
+                [key, value.data.__class__.__name__ if value.has_data else "Unknown", "Yes" if value.has_data else "No"]
+            )
 
         max_lengths = [max(len(str(row[i])) for row in table) for i in range(len(table[0]))]
 
@@ -169,8 +174,8 @@ class DataStreamGroup(DataStream[KeyedStreamLike, _typing.TReaderParams, _typing
     @staticmethod
     def group(
         data_streams: KeyedStreamLike,
-    ) -> "DataStreamGroup[KeyedStreamLike, _typing.NullParams, _typing.NullParams]":
-        return DataStreamGroup[KeyedStreamLike, _typing.NullParams, _typing.NullParams](
+    ) -> "DataStreamGroup[KeyedStreamLike, _typing.UnsetParamsType, _typing.UnsetParamsType]":
+        return DataStreamGroup[KeyedStreamLike, _typing.UnsetParamsType, _typing.UnsetParamsType](
             reader=_typing.UnsetReader,
             writer=_typing.UnsetWriter,
             reader_params=_typing.UnsetParams,
