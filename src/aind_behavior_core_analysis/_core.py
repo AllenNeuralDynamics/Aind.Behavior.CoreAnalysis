@@ -113,17 +113,14 @@ class DataStream(Generic[_typing.TData, _typing.TReaderParams, _typing.TWriterPa
 
 # Type hinting doesn't resolve subtypes of generics apparently.
 # We pass the explicit, resolved, inner generics.
-KeyedStreamLike = TypeVar(
-    "KeyedStreamLike",
-    bound=Union[
-        Dict[str, Union[DataStream[Any, Any, Any], "DataStreamGroup[Any, Any, Any]"]],
-        Dict[str, "DataStreamGroup[Any, Any, Any]"],
-        Dict[str, Union[DataStream[Any, Any, Any]]],
-    ],
-)
+_StreamLike = Union[DataStream[Any, Any, Any], "DataStreamGroup[Any, Any, Any]", "StaticDataStreamGroup[Any, Any, Any]"]
+KeyedStreamLike = TypeVar("KeyedStreamLike", bound=Dict[str, _StreamLike])
 
 
-class DataStreamGroup(DataStream[KeyedStreamLike, _typing.TReaderParams, _typing.TWriterParams]):
+class DataStreamGroup(
+    DataStream[KeyedStreamLike, _typing.TReaderParams, _typing.TWriterParams],
+    Generic[KeyedStreamLike, _typing.TReaderParams, _typing.TWriterParams],
+):
     @property
     def data_streams(self) -> KeyedStreamLike:
         if self._data is None:
@@ -204,7 +201,7 @@ class DataStreamGroup(DataStream[KeyedStreamLike, _typing.TReaderParams, _typing
 
 
 # Todo I think this could be made much easier by passing a "default_reader" that returns the data stream directly. For now I will leave it like this.
-class StaticDataStreamGroup(DataStreamGroup[KeyedStreamLike, _typing.UnsetParamsType, _typing.TWriterParams]):
+class StaticDataStreamGroup(DataStreamGroup[KeyedStreamLike, _typing.TReaderParams, _typing.TWriterParams]):
     def __init__(
         self,
         data_streams: KeyedStreamLike,
@@ -222,6 +219,19 @@ class StaticDataStreamGroup(DataStreamGroup[KeyedStreamLike, _typing.UnsetParams
 
     def read(self) -> KeyedStreamLike:
         return self.data_streams
+
+    def add_stream(self, key: str, stream: _StreamLike) -> Self:
+        """Add a new data stream to the group."""
+        if key in self.data_streams:
+            raise KeyError(f"Key '{key}' already exists in data streams.")
+        self.data_streams[key] = stream
+        return self
+
+    def pop_stream(self, key: str) -> _StreamLike:
+        """Remove a data stream from the group."""
+        if key not in self.data_streams:
+            raise KeyError(f"Key '{key}' not found in data streams.")
+        return self.data_streams.pop(key)
 
 
 @dataclasses.dataclass
