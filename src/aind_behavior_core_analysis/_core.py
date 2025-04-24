@@ -244,16 +244,17 @@ class Dataset:
     description: str
     data_streams: DataStreamGroup
 
-    def print(self, exclude_params: bool = False, print_if_none: bool = False) -> None:
-        print_data_stream_tree(self.data_streams, exclude_params=exclude_params, print_if_none=print_if_none)
+    def tree(self, exclude_params: bool = False, print_if_none: bool = False) -> str:
+        return print_data_stream_tree(self.data_streams, exclude_params=exclude_params, print_if_none=print_if_none)
 
 
 def print_data_stream_tree(
     node: DataStreamGroup | DataStream, prefix="", *, exclude_params: bool = False, print_if_none: bool = False
-) -> None:
+) -> str:
     icon_map = {
         DataStream: "📄",
         DataStreamGroup: "📂",
+        StaticDataStreamGroup: "🧊",
         None: "❓",
         _typing.UnsetParams: "❓",
         _typing.UnsetReader: "❓",
@@ -275,10 +276,10 @@ def print_data_stream_tree(
         if not print_if_unset and is_unset(reader_or_writer):
             return ""
         io_name = reader_or_writer.__name__ if reader_or_writer else "Unset"
-        params = params if reader_or_writer else ""
-        _str = f"{prefix}{icon_map[io_type]}{io_name} \n"
+        params_str = str(params) if reader_or_writer else ""
+        _str = f"{prefix}{icon_map[io_type]} {io_name}\n"
         if not exclude_params:
-            _str += f"{prefix}   <{params}>\n"
+            _str += f"{prefix}    <{params_str}>\n"
         return _str
 
     s_builder = ""
@@ -299,16 +300,20 @@ def print_data_stream_tree(
         exclude_params=exclude_params,
     )
     s_builder = s_builder.rstrip("\n")
-    print(s_builder) if s_builder else None
 
-    if isinstance(node, DataStreamGroup):
+    if isinstance(node, DataStreamGroup) or isinstance(node, StaticDataStreamGroup):
         if not node.has_data:
-            print(f"{prefix}{prefix}{icon_map[None]} Not loaded")
+            s_builder += f"\n{prefix}{icon_map[None]} Not loaded"
         else:
             for key, child in node.data_streams.items():
-                print(f"{prefix}{icon_map[type(child)]} {key}")
-                print_data_stream_tree(child, prefix + "    ", exclude_params=exclude_params)
+                s_builder += f"\n{prefix}{icon_map[type(child)]} {key}"
+                child_tree = print_data_stream_tree(
+                    child, prefix + "    ", exclude_params=exclude_params, print_if_none=print_if_none
+                )
+                if child_tree:
+                    s_builder += f"\n{child_tree}"
 
+    return s_builder.strip()
 
 @dataclasses.dataclass
 class FilePathBaseParam(abc.ABC):
