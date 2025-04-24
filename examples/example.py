@@ -77,6 +77,66 @@ my_dataset = Dataset(
                     device_yml_hint=DeviceYmlByFile(),
                 ),
             ),
+            "HarpCommands": StaticDataStreamGroup(
+                {
+                    "HarpBehavior": DataStreamGroup(
+                        reader=harp_device_reader,
+                        reader_params=HarpDeviceReaderParams(
+                            path=dataset_root / "behavior/HarpCommands/Behavior.harp",
+                            device_yml_hint=DeviceYmlByFile(),
+                        ),
+                    ),
+                    "HarpManipulator": DataStreamGroup(
+                        reader=harp_device_reader,
+                        reader_params=HarpDeviceReaderParams(
+                            path=dataset_root / "behavior/HarpCommands/StepperDriver.harp",
+                            device_yml_hint=DeviceYmlByFile(),
+                        ),
+                    ),
+                    "HarpTreadmill": DataStreamGroup(
+                        reader=harp_device_reader,
+                        reader_params=HarpDeviceReaderParams(
+                            path=dataset_root / "behavior/HarpCommands/Treadmill.harp",
+                            device_yml_hint=DeviceYmlByFile(),
+                        ),
+                    ),
+                    "HarpOlfactometer": DataStreamGroup(
+                        reader=harp_device_reader,
+                        reader_params=HarpDeviceReaderParams(
+                            path=dataset_root / "behavior/HarpCommands/Olfactometer.harp",
+                            device_yml_hint=DeviceYmlByFile(),
+                        ),
+                    ),
+                    "HarpSniffDetector": DataStreamGroup(
+                        reader=harp_device_reader,
+                        reader_params=HarpDeviceReaderParams(
+                            path=dataset_root / "behavior/HarpCommands/SniffDetector.harp",
+                            device_yml_hint=DeviceYmlByFile(),
+                        ),
+                    ),
+                    "HarpLickometer": DataStreamGroup(
+                        reader=harp_device_reader,
+                        reader_params=HarpDeviceReaderParams(
+                            path=dataset_root / "behavior/HarpCommands/Lickometer.harp",
+                            device_yml_hint=DeviceYmlByFile(),
+                        ),
+                    ),
+                    "HarpClockGenerator": DataStreamGroup(
+                        reader=harp_device_reader,
+                        reader_params=HarpDeviceReaderParams(
+                            path=dataset_root / "behavior/HarpCommands/ClockGenerator.harp",
+                            device_yml_hint=DeviceYmlByFile(),
+                        ),
+                    ),
+                    "HarpEnvironmentSensor": DataStreamGroup(
+                        reader=harp_device_reader,
+                        reader_params=HarpDeviceReaderParams(
+                            path=dataset_root / "behavior/HarpCommands/EnvironmentSensor.harp",
+                            device_yml_hint=DeviceYmlByFile(),
+                        ),
+                    ),
+                }
+            ),
             "SoftwareEvents": DataStreamGroup(
                 reader=file_pattern_mux_reader,
                 reader_params=MuxReaderParams(
@@ -106,6 +166,9 @@ for e in exc if exc is not None else []:
 
 my_dataset.data_streams.get_stream("HarpBehavior").load()
 print(my_dataset.data_streams.get_stream("HarpBehavior").get_stream("WhoAmI").read())
+
+my_dataset.data_streams.get_stream("HarpCommands").load_branch()
+print(my_dataset.data_streams.get_stream("HarpCommands").get_stream("HarpBehavior").get_stream("OutputSet").read())
 
 my_dataset.data_streams.get_stream("SoftwareEvents").load()
 my_dataset.data_streams.get_stream("SoftwareEvents").get_stream("Block").load()

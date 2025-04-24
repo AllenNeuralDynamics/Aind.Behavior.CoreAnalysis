@@ -2,11 +2,13 @@ import dataclasses
 from pathlib import Path
 from typing import Dict, Generic, List, TypeVar
 
-from aind_behavior_core_analysis import DataStream, _typing
+from aind_behavior_core_analysis import DataStream, DataStreamGroup, _typing
 
 from . import FilePathBaseParam
 
 _TPathAwareReaderParams = TypeVar("_TPathAwareReaderParams", bound=FilePathBaseParam)
+
+TDataStream = TypeVar("TDataStream", bound=DataStream)
 
 
 @dataclasses.dataclass
@@ -14,6 +16,7 @@ class MuxReaderParams(FilePathBaseParam, Generic[_typing.TData_co, _TPathAwareRe
     glob_pattern: List[str]
     inner_reader: _typing.IReader[_typing.TData_co, _TPathAwareReaderParams]
     inner_reader_params: _TPathAwareReaderParams
+    as_data_stream_group: bool = False
 
 
 def file_pattern_mux_reader(
@@ -33,7 +36,9 @@ def file_pattern_mux_reader(
             params.inner_reader_params,
             path=f,
         )
-        _out[f.stem] = DataStream[_typing.TData, _TPathAwareReaderParams, _typing.UnsetParamsType](
-            reader=params.inner_reader, reader_params=new_params
-        )
+        if params.as_data_stream_group:
+            _constructor = DataStreamGroup[_typing.TData, _TPathAwareReaderParams, _typing.UnsetParamsType]
+        else:
+            _constructor = DataStream[_typing.TData, _TPathAwareReaderParams, _typing.UnsetParamsType]
+        _out[f.stem] = _constructor(reader=params.inner_reader, reader_params=new_params)
     return _out
