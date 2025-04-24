@@ -70,3 +70,14 @@ def multi_line_pydantic_model_df_reader(params: MultiLinePydanticModelDfReaderPa
     if params.index is not None:
         model_ls.set_index(params.index, inplace=True)
     return model_ls
+
+
+@dataclasses.dataclass
+class PydanticModelReaderParams(FilePathBaseParam, Generic[_TModel]):
+    model: Type[_TModel]
+    encoding: str = "UTF-8"
+
+
+def pydantic_model_reader(params: PydanticModelReaderParams[_TModel]) -> _TModel:
+    with open(params.path, "r", encoding=params.encoding) as file:
+        return params.model.model_validate_json(file.read())

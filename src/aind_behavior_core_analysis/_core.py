@@ -3,7 +3,7 @@ import dataclasses
 import os
 from typing import Any, Dict, Generator, Generic, List, Literal, Optional, Self, Tuple, TypeVar, Union
 
-from typing_extensions import override
+from typing_extensions import overload, override
 
 from aind_behavior_core_analysis import _typing
 
@@ -62,7 +62,7 @@ class DataStream(Generic[_typing.TData, _typing.TReaderParams, _typing.TWriterPa
         self._writer_params = params
         return self
 
-    def get_stream(self, key: str) -> Union["DataStream", "DataStreamGroup"]:
+    def at(self, key: str) -> Union["DataStream", "DataStreamGroup"]:
         """Get a data stream by key."""
         raise NotImplementedError("This method is not implemented for DataStream.")
 
@@ -137,7 +137,7 @@ class DataStreamGroup(
         return self
 
     @override
-    def get_stream(self, key: str) -> Union[DataStream, "DataStreamGroup"]:
+    def at(self, key: str) -> Union[DataStream, "DataStreamGroup"]:
         """Get a data stream by key."""
         if not self.has_data:
             raise ValueError("data streams have not been read yet. Cannot access data streams.")
@@ -202,6 +202,9 @@ class DataStreamGroup(
 
 # Todo I think this could be made much easier by passing a "default_reader" that returns the data stream directly. For now I will leave it like this.
 class StaticDataStreamGroup(DataStreamGroup[KeyedStreamLike, _typing.TReaderParams, _typing.TWriterParams]):
+    @overload
+    def __init__(self, data_streams: KeyedStreamLike) -> None: ...
+
     def __init__(
         self,
         data_streams: KeyedStreamLike,
