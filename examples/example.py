@@ -292,7 +292,7 @@ exc = load_branch(my_dataset.data_streams)
 
 for e in exc if exc is not None else []:
     print(f"Stream: {e[0]}")
-    print(f"Exception: {e[2]}")
+    print(f"Exception: {e[1]}")
     print()
 
 print(my_dataset.data_streams.at("Behavior").at("HarpBehavior").at("WhoAmI").read())
@@ -302,7 +302,7 @@ print(my_dataset.data_streams.at("Behavior").at("SoftwareEvents"))
 print(my_dataset.data_streams.at("Behavior").at("SoftwareEvents").at("DepletionVariable").read())
 
 print(my_dataset.data_streams.at("Behavior").at("OperationControl").at("IsStopped").data)
-print(my_dataset.data_streams.at("Behavior").at("Renderer").at("RendererSynchState").data)
+print(my_dataset.data_streams.at("Behavior").at("RendererSynchState").data)
 
 print(my_dataset.data_streams.at("Behavior").at("InputSchemas").at("session").data)
 # my_dataset.print()
