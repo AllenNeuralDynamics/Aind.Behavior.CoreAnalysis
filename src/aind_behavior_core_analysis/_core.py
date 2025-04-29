@@ -1,9 +1,9 @@
 import abc
 import dataclasses
 import os
-from typing import Any, Dict, Generator, Generic, List, Literal, Optional, Self, Tuple, TypeVar, Union
+from typing import Any, Dict, Generator, Generic, List, Literal, Optional, Self, TypeVar, Union
 
-from typing_extensions import overload, override
+from typing_extensions import override
 
 from aind_behavior_core_analysis import _typing
 
@@ -20,17 +20,29 @@ def is_unset(obj: Any) -> bool:
 class DataStream(Generic[_typing.TData, _typing.TReaderParams, _typing.TWriterParams]):
     def __init__(
         self: Self,
+        name: str,
+        description: Optional[str] = None,
         reader: _typing.IReader[_typing.TData, _typing.TReaderParams] = _typing.UnsetReader,
         writer: _typing.IWriter[_typing.TData, _typing.TWriterParams] = _typing.UnsetWriter,
         reader_params: _typing.TReaderParams = _typing.UnsetParams,
         writer_params: _typing.TWriterParams = _typing.UnsetParams,
         **kwargs: Any,
     ) -> None:
+        self._name = name
+        self._description = description
         self._reader: _typing.IReader[_typing.TData, _typing.TReaderParams] = reader
         self._writer: _typing.IWriter[_typing.TData, _typing.TWriterParams] = writer
         self._reader_params: _typing.TReaderParams = reader_params
         self._writer_params: _typing.TWriterParams = writer_params
         self._data: _typing.TData = _typing.UnsetData
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def description(self) -> Optional[str]:
+        return self._description
 
     @property
     def reader(self) -> _typing.IReader[_typing.TData, _typing.TReaderParams]:
@@ -114,57 +126,62 @@ class DataStream(Generic[_typing.TData, _typing.TReaderParams, _typing.TWriterPa
 # Type hinting doesn't resolve subtypes of generics apparently.
 # We pass the explicit, resolved, inner generics.
 _StreamLike = Union[DataStream[Any, Any, Any], "DataStreamGroup[Any, Any, Any]", "StaticDataStreamGroup[Any, Any, Any]"]
-KeyedStreamLike = TypeVar("KeyedStreamLike", bound=Dict[str, _StreamLike])
+StreamLikeCollection = TypeVar("StreamLikeCollection", bound=List[_StreamLike])
 
 
 class DataStreamGroup(
-    DataStream[KeyedStreamLike, _typing.TReaderParams, _typing.TWriterParams],
-    Generic[KeyedStreamLike, _typing.TReaderParams, _typing.TWriterParams],
+    DataStream[StreamLikeCollection, _typing.TReaderParams, _typing.TWriterParams],
+    Generic[StreamLikeCollection, _typing.TReaderParams, _typing.TWriterParams],
 ):
+    def __init__(
+        self,
+        name: str,
+        description: Optional[str] = None,
+        reader: _typing.IReader[StreamLikeCollection, _typing.TReaderParams] = _typing.UnsetReader,
+        writer: _typing.IWriter[StreamLikeCollection, _typing.TWriterParams] = _typing.UnsetWriter,
+        reader_params: _typing.TReaderParams = _typing.UnsetParams,
+        writer_params: _typing.TWriterParams = _typing.UnsetParams,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(
+            name=name,
+            description=description,
+            reader=reader,
+            writer=writer,
+            reader_params=reader_params,
+            writer_params=writer_params,
+            **kwargs,
+        )
+
+        self._hashmap: Dict[str, _StreamLike] = {}
+        self._update_hashmap()
+
+    def _update_hashmap(self) -> None:
+        """Validate the hashmap to ensure all keys are unique."""
+        if not self.has_data:
+            return
+        stream_keys = [stream.name for stream in self.data_streams]
+        duplicates = [name for name in stream_keys if stream_keys.count(name) > 1]
+        if duplicates:
+            raise ValueError(f"Duplicate names found in the data stream collection: {set(duplicates)}")
+        self._hashmap = {stream.name: stream for stream in self.data_streams}
+        return
+
     @property
-    def data_streams(self) -> KeyedStreamLike:
-        if self._data is None:
+    def data_streams(self) -> StreamLikeCollection:
+        if not self.has_data:
             raise ValueError("Data has not been read yet.")
         return self._data
 
-    def bind_data_streams(self, data_streams: KeyedStreamLike) -> Self:
-        """Bind data streams to the data stream group."""
-        if self.has_data:
-            raise ValueError("Data streams are already set. Cannot bind again.")
-        if not (is_unset(self._reader) and is_unset(self._writer)):
-            raise ValueError("reader and writer must be unset to bind data streams directly.")
-        self._data = data_streams
-        return self
-
     @override
-    def at(self, key: str) -> Union[DataStream, "DataStreamGroup"]:
+    def at(self, name: str) -> DataStream:
         """Get a data stream by key."""
         if not self.has_data:
             raise ValueError("data streams have not been read yet. Cannot access data streams.")
-        if key in self.data_streams:
-            return self.data_streams[key]
+        if name in self._hashmap:
+            return self._hashmap[name]
         else:
-            raise KeyError(f"Key '{key}' not found in data streams.")
-
-    def load_branch(self, strict: bool = False) -> Optional[List[Tuple[str, DataStream, Exception]]]:
-        """Recursively load all data streams in the branch using breadth-first traversal.
-
-        This method first loads the data for the current node, then proceeds to load
-        all child nodes in a breadth-first manner.
-        """
-        if strict:
-            self.load()
-            for _, stream in self.walk_data_streams():
-                stream.load()
-            return None
-        else:
-            exceptions = []
-            for key, stream in self.walk_data_streams():
-                try:
-                    stream.load()
-                except Exception as e:
-                    exceptions.append((key, stream, e))
-            return exceptions
+            raise KeyError(f"Stream with name: '{name}' not found in data streams.")
 
     def __str__(self):
         table = []
@@ -174,7 +191,7 @@ class DataStreamGroup(
         if not self.has_data:
             return "DataStreamGroup has not been loaded yet."
 
-        for key, value in self.data_streams.items():
+        for key, value in self._hashmap.items():
             table.append(
                 [key, value.data.__class__.__name__ if value.has_data else "Unknown", "Yes" if value.has_data else "No"]
             )
@@ -192,27 +209,28 @@ class DataStreamGroup(
 
         return table_str
 
-    def walk_data_streams(self) -> Generator[Tuple[str, DataStream], None, None]:
-        for key, value in self.data_streams.items():
+    def walk_data_streams(self) -> Generator[DataStream, None, None]:
+        for value in self.data_streams:
             if isinstance(value, DataStream):
-                yield (key, value)
+                yield value
             if isinstance(value, DataStreamGroup):
                 yield from value.walk_data_streams()
 
 
 # Todo I think this could be made much easier by passing a "default_reader" that returns the data stream directly. For now I will leave it like this.
-class StaticDataStreamGroup(DataStreamGroup[KeyedStreamLike, _typing.TReaderParams, _typing.TWriterParams]):
-    @overload
-    def __init__(self, data_streams: KeyedStreamLike) -> None: ...
-
+class StaticDataStreamGroup(DataStreamGroup[StreamLikeCollection, _typing.TReaderParams, _typing.TWriterParams]):
     def __init__(
         self,
-        data_streams: KeyedStreamLike,
-        writer: _typing.IWriter[KeyedStreamLike, _typing.TWriterParams] = _typing.UnsetWriter,
+        name: str,
+        data_streams: StreamLikeCollection,
+        description: Optional[str] = None,
+        writer: _typing.IWriter[StreamLikeCollection, _typing.TWriterParams] = _typing.UnsetWriter,
         writer_params: _typing.TWriterParams = _typing.UnsetParams,
     ) -> None:
         """Initializes a special DataStreamGroup where the data streams are passed directly, without a reader."""
         super().__init__(
+            name=name,
+            description=description,
             reader=_typing.UnsetReader,
             writer=writer,
             reader_params=_typing.UnsetParams,
@@ -220,21 +238,44 @@ class StaticDataStreamGroup(DataStreamGroup[KeyedStreamLike, _typing.TReaderPara
         )
         self.bind_data_streams(data_streams)
 
-    def read(self) -> KeyedStreamLike:
+    def read(self) -> StreamLikeCollection:
         return self.data_streams
 
-    def add_stream(self, key: str, stream: _StreamLike) -> Self:
-        """Add a new data stream to the group."""
-        if key in self.data_streams:
-            raise KeyError(f"Key '{key}' already exists in data streams.")
-        self.data_streams[key] = stream
+    def bind_data_streams(self, data_streams: StreamLikeCollection) -> Self:
+        """Bind data streams to the data stream group."""
+        if self.has_data:
+            raise ValueError("Data streams are already set. Cannot bind again.")
+        if not (is_unset(self._reader) and is_unset(self._writer)):
+            raise ValueError("reader and writer must be unset to bind data streams directly.")
+        self._data = data_streams
+        self._update_hashmap()
         return self
 
-    def pop_stream(self, key: str) -> _StreamLike:
+    def add_stream(self, stream: _StreamLike) -> Self:
+        """Add a new data stream to the group."""
+        if not self.has_data:
+            self._data: StreamLikeCollection = [stream]
+            self._update_hashmap()
+            return self
+
+        if stream.name in self._hashmap:
+            raise KeyError(f"Stream with name: '{stream.name}' already exists in data streams.")
+
+        self.data_streams.append(stream)
+        self._update_hashmap()
+        return self
+
+    def remove_stream(self, name: str) -> None:
         """Remove a data stream from the group."""
-        if key not in self.data_streams:
-            raise KeyError(f"Key '{key}' not found in data streams.")
-        return self.data_streams.pop(key)
+
+        if not self.has_data:
+            raise ValueError("Data streams have not been read yet. Cannot access data streams.")
+
+        if name not in self._hashmap:
+            raise KeyError(f"Data stream with name '{name}' not found in data streams.")
+        self.data_streams.remove(self._hashmap[name])
+        self._update_hashmap()
+        return
 
 
 @dataclasses.dataclass
@@ -314,6 +355,7 @@ def print_data_stream_tree(
                     s_builder += f"\n{child_tree}"
 
     return s_builder.strip()
+
 
 @dataclasses.dataclass
 class FilePathBaseParam(abc.ABC):

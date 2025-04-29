@@ -3,8 +3,8 @@ from ._core import (
     DataStream,
     DataStreamGroup,
     FilePathBaseParam,
-    KeyedStreamLike,
     StaticDataStreamGroup,
+    StreamLikeCollection,
     is_unset,
     print_data_stream_tree,
 )
@@ -19,6 +19,6 @@ __all__ = [
     "is_unset",
     "Dataset",
     "print_data_stream_tree",
-    "KeyedStreamLike",
     "FilePathBaseParam",
+    "StreamLikeCollection",
 ]

@@ -20,6 +20,7 @@ from aind_behavior_core_analysis.json import (
 )
 from aind_behavior_core_analysis.mux import MuxReaderParams, file_pattern_mux_reader
 from aind_behavior_core_analysis.text import TextReaderParams, text_reader
+from aind_behavior_core_analysis.utils import load_branch
 
 dataset_root = Path(r"path/to/dataset/root")
 my_dataset = Dataset(
@@ -27,241 +28,284 @@ my_dataset = Dataset(
     version="1.0",
     description="My dataset",
     data_streams=StaticDataStreamGroup(
-        {
-            "HarpBehavior": DataStreamGroup(
-                reader=harp_device_reader,
-                reader_params=HarpDeviceReaderParams(
-                    path=dataset_root / "behavior/Behavior.harp",
-                    device_yml_hint=DeviceYmlByFile(),
-                ),
-            ),
-            "HarpManipulator": DataStreamGroup(
-                reader=harp_device_reader,
-                reader_params=HarpDeviceReaderParams(
-                    path=dataset_root / "behavior/StepperDriver.harp",
-                    device_yml_hint=DeviceYmlByFile(),
-                ),
-            ),
-            "HarpTreadmill": DataStreamGroup(
-                reader=harp_device_reader,
-                reader_params=HarpDeviceReaderParams(
-                    path=dataset_root / "behavior/Treadmill.harp",
-                    device_yml_hint=DeviceYmlByFile(),
-                ),
-            ),
-            "HarpOlfactometer": DataStreamGroup(
-                reader=harp_device_reader,
-                reader_params=HarpDeviceReaderParams(
-                    path=dataset_root / "behavior/Olfactometer.harp",
-                    device_yml_hint=DeviceYmlByFile(),
-                ),
-            ),
-            "HarpSniffDetector": DataStreamGroup(
-                reader=harp_device_reader,
-                reader_params=HarpDeviceReaderParams(
-                    path=dataset_root / "behavior/SniffDetector.harp",
-                    device_yml_hint=DeviceYmlByFile(),
-                ),
-            ),
-            "HarpLickometer": DataStreamGroup(
-                reader=harp_device_reader,
-                reader_params=HarpDeviceReaderParams(
-                    path=dataset_root / "behavior/Lickometer.harp",
-                    device_yml_hint=DeviceYmlByFile(),
-                ),
-            ),
-            "HarpClockGenerator": DataStreamGroup(
-                reader=harp_device_reader,
-                reader_params=HarpDeviceReaderParams(
-                    path=dataset_root / "behavior/ClockGenerator.harp",
-                    device_yml_hint=DeviceYmlByFile(),
-                ),
-            ),
-            "HarpEnvironmentSensor": DataStreamGroup(
-                reader=harp_device_reader,
-                reader_params=HarpDeviceReaderParams(
-                    path=dataset_root / "behavior/EnvironmentSensor.harp",
-                    device_yml_hint=DeviceYmlByFile(),
-                ),
-            ),
-            "HarpCommands": StaticDataStreamGroup(
-                {
-                    "HarpBehavior": DataStreamGroup(
+        name="Dataset",
+        description="Root of the dataset",
+        data_streams=[
+            StaticDataStreamGroup(
+                name="Behavior",
+                description="Data from the Behavior modality",
+                data_streams=[
+                    DataStreamGroup(
+                        name="HarpBehavior",
                         reader=harp_device_reader,
                         reader_params=HarpDeviceReaderParams(
-                            path=dataset_root / "behavior/HarpCommands/Behavior.harp",
+                            path=dataset_root / "behavior/Behavior.harp",
                             device_yml_hint=DeviceYmlByFile(),
                         ),
                     ),
-                    "HarpManipulator": DataStreamGroup(
+                    DataStreamGroup(
+                        name="HarpManipulator",
                         reader=harp_device_reader,
                         reader_params=HarpDeviceReaderParams(
-                            path=dataset_root / "behavior/HarpCommands/StepperDriver.harp",
+                            path=dataset_root / "behavior/StepperDriver.harp",
                             device_yml_hint=DeviceYmlByFile(),
                         ),
                     ),
-                    "HarpTreadmill": DataStreamGroup(
+                    DataStreamGroup(
+                        name="HarpTreadmill",
                         reader=harp_device_reader,
                         reader_params=HarpDeviceReaderParams(
-                            path=dataset_root / "behavior/HarpCommands/Treadmill.harp",
+                            path=dataset_root / "behavior/Treadmill.harp",
                             device_yml_hint=DeviceYmlByFile(),
                         ),
                     ),
-                    "HarpOlfactometer": DataStreamGroup(
+                    DataStreamGroup(
+                        name="HarpOlfactometer",
                         reader=harp_device_reader,
                         reader_params=HarpDeviceReaderParams(
-                            path=dataset_root / "behavior/HarpCommands/Olfactometer.harp",
+                            path=dataset_root / "behavior/Olfactometer.harp",
                             device_yml_hint=DeviceYmlByFile(),
                         ),
                     ),
-                    "HarpSniffDetector": DataStreamGroup(
+                    DataStreamGroup(
+                        name="HarpSniffDetector",
                         reader=harp_device_reader,
                         reader_params=HarpDeviceReaderParams(
-                            path=dataset_root / "behavior/HarpCommands/SniffDetector.harp",
+                            path=dataset_root / "behavior/SniffDetector.harp",
                             device_yml_hint=DeviceYmlByFile(),
                         ),
                     ),
-                    "HarpLickometer": DataStreamGroup(
+                    DataStreamGroup(
+                        name="HarpLickometer",
                         reader=harp_device_reader,
                         reader_params=HarpDeviceReaderParams(
-                            path=dataset_root / "behavior/HarpCommands/Lickometer.harp",
+                            path=dataset_root / "behavior/Lickometer.harp",
                             device_yml_hint=DeviceYmlByFile(),
                         ),
                     ),
-                    "HarpClockGenerator": DataStreamGroup(
+                    DataStreamGroup(
+                        name="HarpClockGenerator",
                         reader=harp_device_reader,
                         reader_params=HarpDeviceReaderParams(
-                            path=dataset_root / "behavior/HarpCommands/ClockGenerator.harp",
+                            path=dataset_root / "behavior/ClockGenerator.harp",
                             device_yml_hint=DeviceYmlByFile(),
                         ),
                     ),
-                    "HarpEnvironmentSensor": DataStreamGroup(
+                    DataStreamGroup(
+                        name="HarpEnvironmentSensor",
                         reader=harp_device_reader,
                         reader_params=HarpDeviceReaderParams(
-                            path=dataset_root / "behavior/HarpCommands/EnvironmentSensor.harp",
+                            path=dataset_root / "behavior/EnvironmentSensor.harp",
                             device_yml_hint=DeviceYmlByFile(),
                         ),
                     ),
-                }
-            ),
-            "SoftwareEvents": DataStreamGroup(
-                reader=file_pattern_mux_reader,
-                reader_params=MuxReaderParams(
-                    path=dataset_root / "behavior/SoftwareEvents",
-                    glob_pattern=["*.json"],
-                    inner_reader=multi_line_pydantic_model_df_reader,
-                    inner_reader_params=MultiLinePydanticModelDfReaderParams(
-                        path="",
-                        model=SoftwareEvent,
-                        index="timestamp",
+                    StaticDataStreamGroup(
+                        name="HarpCommands",
+                        description="Commands sent to Harp devices",
+                        data_streams=[
+                            DataStreamGroup(
+                                name="HarpBehavior",
+                                reader=harp_device_reader,
+                                reader_params=HarpDeviceReaderParams(
+                                    path=dataset_root / "behavior/HarpCommands/Behavior.harp",
+                                    device_yml_hint=DeviceYmlByFile(),
+                                ),
+                            ),
+                            DataStreamGroup(
+                                name="HarpManipulator",
+                                reader=harp_device_reader,
+                                reader_params=HarpDeviceReaderParams(
+                                    path=dataset_root / "behavior/HarpCommands/StepperDriver.harp",
+                                    device_yml_hint=DeviceYmlByFile(),
+                                ),
+                            ),
+                            DataStreamGroup(
+                                name="HarpTreadmill",
+                                reader=harp_device_reader,
+                                reader_params=HarpDeviceReaderParams(
+                                    path=dataset_root / "behavior/HarpCommands/Treadmill.harp",
+                                    device_yml_hint=DeviceYmlByFile(),
+                                ),
+                            ),
+                            DataStreamGroup(
+                                name="HarpOlfactometer",
+                                reader=harp_device_reader,
+                                reader_params=HarpDeviceReaderParams(
+                                    path=dataset_root / "behavior/HarpCommands/Olfactometer.harp",
+                                    device_yml_hint=DeviceYmlByFile(),
+                                ),
+                            ),
+                            DataStreamGroup(
+                                name="HarpSniffDetector",
+                                reader=harp_device_reader,
+                                reader_params=HarpDeviceReaderParams(
+                                    path=dataset_root / "behavior/HarpCommands/SniffDetector.harp",
+                                    device_yml_hint=DeviceYmlByFile(),
+                                ),
+                            ),
+                            DataStreamGroup(
+                                name="HarpLickometer",
+                                reader=harp_device_reader,
+                                reader_params=HarpDeviceReaderParams(
+                                    path=dataset_root / "behavior/HarpCommands/Lickometer.harp",
+                                    device_yml_hint=DeviceYmlByFile(),
+                                ),
+                            ),
+                            DataStreamGroup(
+                                name="HarpClockGenerator",
+                                reader=harp_device_reader,
+                                reader_params=HarpDeviceReaderParams(
+                                    path=dataset_root / "behavior/HarpCommands/ClockGenerator.harp",
+                                    device_yml_hint=DeviceYmlByFile(),
+                                ),
+                            ),
+                            DataStreamGroup(
+                                name="HarpEnvironmentSensor",
+                                reader=harp_device_reader,
+                                reader_params=HarpDeviceReaderParams(
+                                    path=dataset_root / "behavior/HarpCommands/EnvironmentSensor.harp",
+                                    device_yml_hint=DeviceYmlByFile(),
+                                ),
+                            ),
+                        ],
                     ),
-                ),
-            ),
-            "OperationControl": DataStreamGroup(
-                reader=file_pattern_mux_reader,
-                reader_params=MuxReaderParams(
-                    path=dataset_root / "behavior/OperationControl",
-                    glob_pattern=["*.csv"],
-                    inner_reader=csv_reader,
-                    inner_reader_params=CsvReaderParams(
-                        path="",
-                        strict_header=True,
-                        delimiter=",",
-                        index="Seconds",
+                    DataStreamGroup(
+                        name="SoftwareEvents",
+                        description="Software events generated by the workflow. The timestamps of these events are low precision and should not be used to align to physiology data.",
+                        reader=file_pattern_mux_reader,
+                        reader_params=MuxReaderParams(
+                            path=dataset_root / "behavior/SoftwareEvents",
+                            glob_pattern=["*.json"],
+                            inner_reader=multi_line_pydantic_model_df_reader,
+                            inner_reader_params=MultiLinePydanticModelDfReaderParams(
+                                path="",
+                                model=SoftwareEvent,
+                                index="timestamp",
+                            ),
+                        ),
                     ),
-                ),
-            ),
-            "Renderer": StaticDataStreamGroup(
-                {
-                    "RendererSynchState": DataStream(
+                    DataStreamGroup(
+                        name="OperationControl",
+                        description="Events related with conditions and task logic computed online.",
+                        reader=file_pattern_mux_reader,
+                        reader_params=MuxReaderParams(
+                            path=dataset_root / "behavior/OperationControl",
+                            glob_pattern=["*.csv"],
+                            inner_reader=csv_reader,
+                            inner_reader_params=CsvReaderParams(
+                                path="",
+                                strict_header=True,
+                                delimiter=",",
+                                index="Seconds",
+                            ),
+                        ),
+                    ),
+                    DataStream(
+                        name="RendererSynchState",
+                        description="Contains information that allows the post-hoc alignment of visual stimuli to the behavior data.",
                         reader=csv_reader,
                         reader_params=CsvReaderParams(
                             path=dataset_root / "behavior/Renderer/RendererSynchState.csv",
                             strict_header=True,
                             delimiter=",",
                         ),
-                    )
-                }
-            ),
-            "UpdaterEvents": DataStreamGroup(
-                reader=file_pattern_mux_reader,
-                reader_params=MuxReaderParams(
-                    path=dataset_root / "behavior/UpdaterEvents",
-                    glob_pattern=["*.json"],
-                    inner_reader=multi_line_pydantic_model_df_reader,
-                    inner_reader_params=MultiLinePydanticModelDfReaderParams(
-                        path="",
-                        model=SoftwareEvent,
-                        index="timestamp",
                     ),
-                ),
-            ),
-            "Logs": StaticDataStreamGroup(
-                {
-                    "Launcher": DataStream(
-                        reader=text_reader,
-                        reader_params=TextReaderParams(
-                            path=dataset_root / "behavior/Logs/launcher.log",
-                        ),
-                    ),
-                    "EndSession": DataStream(
-                        reader=pydantic_model_reader,
-                        reader_params=(
-                            PydanticModelReaderParams(
-                                path=dataset_root / "behavior/Logs/EndSession.json",
+                    DataStreamGroup(
+                        name="UpdaterEvents",
+                        description="Events generated when one of the updaters is triggered in the task logic.",
+                        reader=file_pattern_mux_reader,
+                        reader_params=MuxReaderParams(
+                            path=dataset_root / "behavior/UpdaterEvents",
+                            glob_pattern=["*.json"],
+                            inner_reader=multi_line_pydantic_model_df_reader,
+                            inner_reader_params=MultiLinePydanticModelDfReaderParams(
+                                path="",
                                 model=SoftwareEvent,
-                            )
+                                index="timestamp",
+                            ),
                         ),
                     ),
-                }
+                    StaticDataStreamGroup(
+                        name="Logs",
+                        data_streams=[
+                            DataStream(
+                                name="Launcher",
+                                description="Contains the console log of the launcher process.",
+                                reader=text_reader,
+                                reader_params=TextReaderParams(
+                                    path=dataset_root / "behavior/Logs/launcher.log",
+                                ),
+                            ),
+                            DataStream(
+                                name="EndSession",
+                                description="A file that determines the end of the session. If the file is empty, the session is still running or it was not closed properly.",
+                                reader=pydantic_model_reader,
+                                reader_params=(
+                                    PydanticModelReaderParams(
+                                        path=dataset_root / "behavior/Logs/EndSession.json",
+                                        model=SoftwareEvent,
+                                    )
+                                ),
+                            ),
+                        ],
+                    ),
+                    StaticDataStreamGroup(
+                        name="InputSchemas",
+                        description="Configuration files for the behavior rig, task_logic and session.",
+                        data_streams=[
+                            DataStream(
+                                name="rig",
+                                reader=pydantic_model_reader,
+                                reader_params=PydanticModelReaderParams(
+                                    model=AindBehaviorRigModel,
+                                    path=dataset_root / "behavior/Logs/rig_input.json",
+                                ),
+                            ),
+                            DataStream(
+                                name="task_logic",
+                                reader=pydantic_model_reader,
+                                reader_params=PydanticModelReaderParams(
+                                    model=AindBehaviorTaskLogicModel,
+                                    path=dataset_root / "behavior/Logs/tasklogic_input.json",
+                                ),
+                            ),
+                            DataStream(
+                                name="session",
+                                reader=pydantic_model_reader,
+                                reader_params=PydanticModelReaderParams(
+                                    model=AindBehaviorSessionModel,
+                                    path=dataset_root / "behavior/Logs/session_input.json",
+                                ),
+                            ),
+                        ],
+                    ),
+                ],
             ),
-            "InputSchemas": StaticDataStreamGroup(
-                {
-                    "rig": DataStream(
-                        reader=pydantic_model_reader,
-                        reader_params=PydanticModelReaderParams(
-                            model=AindBehaviorRigModel,
-                            path=dataset_root / "behavior/Logs/rig_input.json",
-                        ),
-                    ),
-                    "task_logic": DataStream(
-                        reader=pydantic_model_reader,
-                        reader_params=PydanticModelReaderParams(
-                            model=AindBehaviorTaskLogicModel,
-                            path=dataset_root / "behavior/Logs/tasklogic_input.json",
-                        ),
-                    ),
-                    "session": DataStream(
-                        reader=pydantic_model_reader,
-                        reader_params=PydanticModelReaderParams(
-                            model=AindBehaviorSessionModel,
-                            path=dataset_root / "behavior/Logs/session_input.json",
-                        ),
-                    ),
-                }
-            ),
-        }
+        ],
     ),
 )
 
 
-print(my_dataset.data_streams.at("HarpManipulator").load().at("WhoAmI").load().data)
+print(my_dataset.data_streams.at("Behavior").at("HarpManipulator").load().at("WhoAmI").load().data)
 
-exc = my_dataset.data_streams.load_branch()
+exc = load_branch(my_dataset.data_streams)
 
 for e in exc if exc is not None else []:
     print(f"Stream: {e[0]}")
     print(f"Exception: {e[2]}")
     print()
 
-print(my_dataset.data_streams.at("HarpBehavior").at("WhoAmI").read())
+print(my_dataset.data_streams.at("Behavior").at("HarpBehavior").at("WhoAmI").read())
 
-print(my_dataset.data_streams.at("HarpCommands").at("HarpBehavior").at("OutputSet").read())
-print(my_dataset.data_streams.at("SoftwareEvents"))
-print(my_dataset.data_streams.at("SoftwareEvents").at("DepletionVariable").read())
+print(my_dataset.data_streams.at("Behavior").at("HarpCommands").at("HarpBehavior").at("OutputSet").read())
+print(my_dataset.data_streams.at("Behavior").at("SoftwareEvents"))
+print(my_dataset.data_streams.at("Behavior").at("SoftwareEvents").at("DepletionVariable").read())
 
-print(my_dataset.data_streams.at("OperationControl").at("IsStopped").data)
-print(my_dataset.data_streams.at("Renderer").at("RendererSynchState").data)
+print(my_dataset.data_streams.at("Behavior").at("OperationControl").at("IsStopped").data)
+print(my_dataset.data_streams.at("Behavior").at("Renderer").at("RendererSynchState").data)
 
-print(my_dataset.data_streams.at("InputSchemas").at("session").data)
+print(my_dataset.data_streams.at("Behavior").at("InputSchemas").at("session").data)
 # my_dataset.print()
+
+with open("my_dataset.txt", "w", encoding="UTF-8") as f:
+    f.write(my_dataset.tree(exclude_params=True))
