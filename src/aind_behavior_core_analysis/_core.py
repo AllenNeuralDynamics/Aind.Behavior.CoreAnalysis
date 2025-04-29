@@ -115,6 +115,8 @@ class DataStream(Generic[_typing.TData, _typing.TReaderParams, _typing.TWriterPa
     def __str__(self):
         return (
             f"DataStream("
+            f"name={self._name}, "
+            f"description={self._description}, "
             f"reader={self._reader}, "
             f"writer={self._writer}, "
             f"reader_params={self._reader_params}, "
@@ -172,6 +174,15 @@ class DataStreamGroup(
         if not self.has_data:
             raise ValueError("Data has not been read yet.")
         return self._data
+
+    @override
+    def load(self):
+        super().load()
+        if not isinstance(self._data, list):
+            self._data = _typing.UnsetData
+            raise ValueError("Data must be a list of DataStreams.")
+        self._update_hashmap()
+        return self
 
     @override
     def at(self, name: str) -> DataStream:
@@ -346,8 +357,8 @@ def print_data_stream_tree(
         if not node.has_data:
             s_builder += f"\n{prefix}{icon_map[None]} Not loaded"
         else:
-            for key, child in node.data_streams.items():
-                s_builder += f"\n{prefix}{icon_map[type(child)]} {key}"
+            for child in node.data_streams:
+                s_builder += f"\n{prefix}{icon_map[type(child)]} {child.name}"
                 child_tree = print_data_stream_tree(
                     child, prefix + "    ", exclude_params=exclude_params, print_if_none=print_if_none
                 )
