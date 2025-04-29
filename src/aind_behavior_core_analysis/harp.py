@@ -121,6 +121,8 @@ def harp_device_reader(
             return reg_reader.read(params.base_path, epoch=params.epoch, keep_type=params.keep_type)
 
         data_streams[name] = DataStream(
+            name=name,
+            description=reg_reader.register.description if reg_reader.register.description else None,
             reader=_reader,
             reader_params=harp.reader._ReaderParams(base_path=None, epoch=params.epoch, keep_type=params.keep_type),
         )

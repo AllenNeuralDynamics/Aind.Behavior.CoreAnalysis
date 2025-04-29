@@ -74,7 +74,7 @@ class DataStream(Generic[_typing.TData, _typing.TReaderParams, _typing.TWriterPa
         self._writer_params = params
         return self
 
-    def at(self, key: str) -> Union["DataStream", "DataStreamGroup"]:
+    def at(self, name: str) -> Union["DataStream", "DataStreamGroup"]:
         """Get a data stream by key."""
         raise NotImplementedError("This method is not implemented for DataStream.")
 
@@ -254,7 +254,7 @@ class StaticDataStreamGroup(DataStreamGroup[StreamLikeCollection, _typing.TReade
     def add_stream(self, stream: _StreamLike) -> Self:
         """Add a new data stream to the group."""
         if not self.has_data:
-            self._data: StreamLikeCollection = [stream]
+            self._data = [stream]
             self._update_hashmap()
             return self
 

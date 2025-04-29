@@ -1,6 +1,6 @@
 import dataclasses
 from pathlib import Path
-from typing import Dict, Generic, List, TypeVar
+from typing import Generic, List, TypeVar
 
 from aind_behavior_core_analysis import DataStream, DataStreamGroup, _typing
 
@@ -21,7 +21,7 @@ class MuxReaderParams(FilePathBaseParam, Generic[_typing.TData_co, _TPathAwareRe
 
 def file_pattern_mux_reader(
     params: MuxReaderParams[_typing.TData, _TPathAwareReaderParams],
-) -> Dict[str, DataStream[_typing.TData, _TPathAwareReaderParams, _typing.UnsetParamsType]]:
+) -> List[DataStream[_typing.TData, _TPathAwareReaderParams, _typing.UnsetParamsType]]:
     _hits: List[Path] = []
     for pattern in params.glob_pattern:
         _hits.extend(list(Path(params.path).glob(pattern)))
@@ -30,15 +30,15 @@ def file_pattern_mux_reader(
     if len(list(set([f.stem for f in _hits]))) != len(_hits):
         raise ValueError(f"Duplicate stems found in glob pattern: {params.glob_pattern}.")
 
-    _out: Dict[str, DataStream[_typing.TData, _TPathAwareReaderParams, _typing.UnsetParamsType]] = {}
+    _out: List[DataStream[_typing.TData, _TPathAwareReaderParams, _typing.UnsetParamsType]] = []
     for f in _hits:
         new_params = dataclasses.replace(
             params.inner_reader_params,
             path=f,
         )
-        if params.as_data_stream_group:
-            _constructor = DataStreamGroup[_typing.TData, _TPathAwareReaderParams, _typing.UnsetParamsType]
-        else:
-            _constructor = DataStream[_typing.TData, _TPathAwareReaderParams, _typing.UnsetParamsType]
-        _out[f.stem] = _constructor(reader=params.inner_reader, reader_params=new_params)
+        _constructor = DataStreamGroup if params.as_data_stream_group else DataStream
+        # If we want to be extra safe, we should probably have a runtime check here to ensure the return
+        # type of the reader is bound to the type of the DataStreamGroup. I will just ignore it for now.
+        # Alternatively, we could split these into two functions, and narrow the type of the reader.
+        _out.append(_constructor(name=f.stem, reader=params.inner_reader, reader_params=new_params))  # type: ignore
     return _out
