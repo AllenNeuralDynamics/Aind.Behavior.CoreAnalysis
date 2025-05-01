@@ -13,22 +13,25 @@ TDataStream = TypeVar("TDataStream", bound=DataStream)
 
 @dataclasses.dataclass
 class MuxReaderParams(FilePathBaseParam, Generic[_typing.TData_co, _TPathAwareReaderParams]):
-    glob_pattern: List[str]
+    include_glob_pattern: List[str]
     inner_reader: _typing.IReader[_typing.TData_co, _TPathAwareReaderParams]
     inner_reader_params: _TPathAwareReaderParams
     as_data_stream_group: bool = False
+    exclude_glob_pattern: List[str] = dataclasses.field(default_factory=list)
 
 
 def file_pattern_mux_reader(
     params: MuxReaderParams[_typing.TData, _TPathAwareReaderParams],
 ) -> List[DataStream[_typing.TData, _TPathAwareReaderParams, _typing.UnsetParamsType]]:
     _hits: List[Path] = []
-    for pattern in params.glob_pattern:
+    for pattern in params.include_glob_pattern:
         _hits.extend(list(Path(params.path).glob(pattern)))
+    for pattern in params.exclude_glob_pattern:
+        _hits = [f for f in _hits if not f.match(pattern)]
     _hits = list(set(_hits))
 
     if len(list(set([f.stem for f in _hits]))) != len(_hits):
-        raise ValueError(f"Duplicate stems found in glob pattern: {params.glob_pattern}.")
+        raise ValueError(f"Duplicate stems found in glob pattern: {params.include_glob_pattern}.")
 
     _out: List[DataStream[_typing.TData, _TPathAwareReaderParams, _typing.UnsetParamsType]] = []
     for f in _hits:
