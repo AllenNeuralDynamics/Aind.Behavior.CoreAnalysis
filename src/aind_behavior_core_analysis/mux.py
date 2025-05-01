@@ -1,6 +1,6 @@
 import dataclasses
 from pathlib import Path
-from typing import Generic, List, TypeVar
+from typing import Generic, List, Optional, TypeVar
 
 from aind_behavior_core_analysis import DataStream, DataStreamGroup, _typing
 
@@ -18,6 +18,7 @@ class MuxReaderParams(FilePathBaseParam, Generic[_typing.TData_co, _TPathAwareRe
     inner_reader_params: _TPathAwareReaderParams
     as_data_stream_group: bool = False
     exclude_glob_pattern: List[str] = dataclasses.field(default_factory=list)
+    inner_descriptions: dict[str, Optional[str]] = dataclasses.field(default_factory=dict)
 
 
 def file_pattern_mux_reader(
@@ -34,6 +35,7 @@ def file_pattern_mux_reader(
         raise ValueError(f"Duplicate stems found in glob pattern: {params.include_glob_pattern}.")
 
     _out: List[DataStream[_typing.TData, _TPathAwareReaderParams, _typing.UnsetParamsType]] = []
+    _descriptions = params.inner_descriptions
     for f in _hits:
         new_params = dataclasses.replace(
             params.inner_reader_params,
@@ -43,5 +45,12 @@ def file_pattern_mux_reader(
         # If we want to be extra safe, we should probably have a runtime check here to ensure the return
         # type of the reader is bound to the type of the DataStreamGroup. I will just ignore it for now.
         # Alternatively, we could split these into two functions, and narrow the type of the reader.
-        _out.append(_constructor(name=f.stem, reader=params.inner_reader, reader_params=new_params))  # type: ignore
+        _out.append(
+            _constructor(
+                name=f.stem,
+                description=_descriptions.get(f.stem, None),
+                reader=params.inner_reader,
+                reader_params=new_params,
+            )
+        )  # type: ignore
     return _out

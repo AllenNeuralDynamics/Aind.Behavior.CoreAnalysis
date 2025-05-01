@@ -175,13 +175,16 @@ my_dataset = Dataset(
                         reader=file_pattern_mux_reader,
                         reader_params=MuxReaderParams(
                             path=dataset_root / "behavior/SoftwareEvents",
-                            glob_pattern=["*.json"],
+                            include_glob_pattern=["*.json"],
                             inner_reader=multi_line_pydantic_model_df_reader,
                             inner_reader_params=MultiLinePydanticModelDfReaderParams(
                                 path="",
                                 model=SoftwareEvent,
                                 index="timestamp",
                             ),
+                            inner_descriptions={
+                                "DepletionVariable": "Tracks the independent variable that is being used to calculate the available amount of reward in the patch."
+                            },
                         ),
                     ),
                     DataStreamGroup(
@@ -190,7 +193,7 @@ my_dataset = Dataset(
                         reader=file_pattern_mux_reader,
                         reader_params=MuxReaderParams(
                             path=dataset_root / "behavior/OperationControl",
-                            glob_pattern=["*.csv"],
+                            include_glob_pattern=["*.csv"],
                             inner_reader=csv_reader,
                             inner_reader_params=CsvReaderParams(
                                 path="",
@@ -216,7 +219,7 @@ my_dataset = Dataset(
                         reader=file_pattern_mux_reader,
                         reader_params=MuxReaderParams(
                             path=dataset_root / "behavior/UpdaterEvents",
-                            glob_pattern=["*.json"],
+                            include_glob_pattern=["*.json"],
                             inner_reader=multi_line_pydantic_model_df_reader,
                             inner_reader_params=MultiLinePydanticModelDfReaderParams(
                                 path="",
@@ -300,11 +303,13 @@ print(my_dataset.data_streams.at("Behavior").at("HarpBehavior").at("WhoAmI").rea
 print(my_dataset.data_streams.at("Behavior").at("HarpCommands").at("HarpBehavior").at("OutputSet").read())
 print(my_dataset.data_streams.at("Behavior").at("SoftwareEvents"))
 print(my_dataset.data_streams.at("Behavior").at("SoftwareEvents").at("DepletionVariable").read())
+print(my_dataset.data_streams.at("Behavior").at("SoftwareEvents").at("DepletionVariable"))
 
 print(my_dataset.data_streams.at("Behavior").at("OperationControl").at("IsStopped").data)
 print(my_dataset.data_streams.at("Behavior").at("RendererSynchState").data)
 
 print(my_dataset.data_streams.at("Behavior").at("InputSchemas").at("session").data)
+
 # my_dataset.print()
 
 with open("my_dataset.txt", "w", encoding="UTF-8") as f:
