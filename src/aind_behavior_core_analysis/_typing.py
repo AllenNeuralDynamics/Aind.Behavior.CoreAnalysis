@@ -62,6 +62,5 @@ class _UnsetData:
 
 UnsetParams = cast(Any, _UnsetParams())
 UnsetReader: _UnsetReader = _UnsetReader()
-UnsetWriter: _UnsetWriter = _UnsetWriter()
 UnsetData: Any = _UnsetData()
 UnsetParamsType: TypeAlias = _UnsetParams
