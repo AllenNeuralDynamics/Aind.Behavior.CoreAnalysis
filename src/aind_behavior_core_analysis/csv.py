@@ -1,9 +1,10 @@
 from dataclasses import dataclass
-from typing import Literal, Optional
+from typing import Optional
 
 import pandas as pd
 
 from . import FilePathBaseParam
+from ._core import DataStream
 
 
 @dataclass
@@ -13,19 +14,12 @@ class CsvReaderParams(FilePathBaseParam):
     index: Optional[str] = None
 
 
-def csv_reader(params: CsvReaderParams) -> pd.DataFrame:
-    data = pd.read_csv(params.path, delimiter=params.delimiter, header=0 if params.strict_header else None)
-    if params.index is not None:
-        data.set_index(params.index, inplace=True)
-    return data
+class CsvDataStream(DataStream[pd.DataFrame, CsvReaderParams]):
+    @staticmethod
+    def _reader(params: CsvReaderParams) -> pd.DataFrame:
+        data = pd.read_csv(params.path, delimiter=params.delimiter, header=0 if params.strict_header else None)
+        if params.index is not None:
+            data.set_index(params.index, inplace=True)
+        return data
 
-
-@dataclass
-class CsvWriterParams(FilePathBaseParam):
-    delimiter: str = ","
-    encoding: Optional[Literal["utf-8"]] = "utf-8"
-    index: bool = False
-
-
-def csv_writer(data: pd.DataFrame, params: CsvWriterParams) -> None:
-    data.to_csv(params.path, sep=params.delimiter, index=params.index, encoding=params.encoding)
+    parameters = CsvReaderParams

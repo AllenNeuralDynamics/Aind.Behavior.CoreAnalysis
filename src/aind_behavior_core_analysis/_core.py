@@ -1,7 +1,7 @@
 import abc
 import dataclasses
 import os
-from typing import Any, Dict, Generator, Generic, List, Optional, Self, TypeVar
+from typing import Any, Callable, Dict, Generator, Generic, List, Optional, Self, TypeVar
 
 from typing_extensions import override
 
@@ -35,6 +35,8 @@ class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
         return self._description
 
     _reader: _typing.IReader[_typing.TData, _typing.TReaderParams] = _typing.UnsetReader
+
+    parameters: Callable[..., _typing.TReaderParams]
 
     def read(self, reader_params: Optional[_typing.TReaderParams] = None) -> _typing.TData:
         reader_params = reader_params if reader_params is not None else self._reader_params
@@ -168,14 +170,12 @@ class DataStreamCollectionBase(
     def from_generator(
         cls, name: str, generator: Generator[TDataStream, None, None], **kwargs
     ) -> "DataStreamCollectionBase[TDataStream,  Generator[TDataStream, None, None]]":
-        """Create a DataStreamCollection from a generator."""
-
         def _reader(params: Generator[TDataStream, None, None] = generator) -> List[TDataStream]:
-            """Reader function to read data from the generator."""
             return list(params)
 
         c = DataStreamCollectionBase[TDataStream, Generator[TDataStream, None, None]](name=name, **kwargs)
         c._reader = _reader
+        c.parameters = lambda _: generator
         return c
 
 
@@ -195,6 +195,11 @@ class AnonymousDataStreamCollection(DataStreamCollectionBase[DataStream, _typing
             reader_params=_typing.UnsetParams,
         )
         self.bind_data_streams(data_streams)
+
+    @staticmethod
+    def parameters(*args, **kwargs) -> _typing.UnsetParamsType:
+        """Parameters function to return UnsetParams."""
+        return _typing.UnsetParams
 
     def _reader(self, *args, **kwargs) -> List[DataStream]:
         """Reader function to read data from the generator."""
