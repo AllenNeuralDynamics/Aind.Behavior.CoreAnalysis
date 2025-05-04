@@ -12,20 +12,10 @@ class IReader(Protocol, Generic[TData_co, TReaderParams]):
     def __call__(self, params: TReaderParams) -> TData_co: ...
 
 
-class IWriter(Protocol, Generic[TData_contra, TWriterParams]):
-    def __call__(self, data: TData_contra, params: TWriterParams) -> Any: ...
-
-
 @final
 class _UnsetReader(IReader[TData, TReaderParams]):
     def __call__(self, params: Any) -> Any:
         raise NotImplementedError("Reader is not set.")
-
-
-@final
-class _UnsetWriter(IWriter[TData, TWriterParams]):
-    def __call__(self, data: Any, params: Any) -> None:
-        raise NotImplementedError("Writer is not set.")
 
 
 @final
