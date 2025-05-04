@@ -25,7 +25,7 @@ def load_branch(
     return None if strict else exceptions
 
 
-def print_data_stream_tree(node: DataStream) -> str:
+def print_data_stream_tree(node: DataStream, prefix: str = "", is_last: bool = True, parents: list[bool] = []) -> str:
     icon_map = {
         False: "📄",
         True: "📂",
@@ -35,14 +35,21 @@ def print_data_stream_tree(node: DataStream) -> str:
     node_icon = icon_map[node.is_collection]
     node_icon += f"{icon_map[None]}" if not node.has_data else ""
 
-    if node.is_collection and node.has_data:
-        html = f'<li><span class="caret">{node_icon} {node.name}</span>'
-        html += '<ul class="nested">'
-        for child in node.data:
-            child_html = print_data_stream_tree(child)
-            html += child_html
-        html += "</ul></li>"
-    else:
-        html = f"<li>{node_icon} {node.name}</li>"
+    line_prefix = ""
+    for parent_is_last in parents[:-1]:
+        line_prefix += "    " if parent_is_last else "│   "
 
-    return html
+    if parents:
+        branch = "└── " if is_last else "├── "
+        line_prefix += branch
+
+    tree_representation = f"{line_prefix}{node_icon} {node.name}\n"
+
+    if node.is_collection and node.has_data:
+        for i, child in enumerate(node.data):
+            child_is_last = i == len(node.data) - 1
+            tree_representation += print_data_stream_tree(
+                child, prefix="", is_last=child_is_last, parents=parents + [is_last]
+            )
+
+    return tree_representation
