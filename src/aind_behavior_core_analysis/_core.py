@@ -1,7 +1,7 @@
 import abc
 import dataclasses
 import os
-from typing import Any, Dict, Generator, Generic, List, Optional, Self, TypeVar, Callable, ParamSpec
+from typing import Any, Dict, Generator, Generic, List, Optional, ParamSpec, Self, TypeVar
 
 from typing_extensions import override
 
@@ -11,7 +11,9 @@ from aind_behavior_core_analysis import _typing
 def is_unset(obj: Any) -> bool:
     return (obj is _typing.UnsetReader) or (obj is _typing.UnsetParams) or (obj is _typing.UnsetData)
 
+
 P = ParamSpec("P")
+
 
 class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
     def __init__(
@@ -36,7 +38,7 @@ class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
         return self._description
 
     _reader: _typing.IReader[_typing.TData, _typing.TReaderParams] = _typing.UnsetReader
-    
+
     make_params = NotImplementedError("make_params is not implemented for DataStream.")
 
     def read(self, reader_params: Optional[_typing.TReaderParams] = None) -> _typing.TData:
@@ -166,18 +168,6 @@ class DataStreamCollectionBase(
                 yield value
             if isinstance(value, DataStreamCollectionBase):
                 yield from value.walk_data_streams()
-
-    @classmethod
-    def from_generator(
-        cls, name: str, generator: Generator[TDataStream, None, None], **kwargs
-    ) -> "DataStreamCollectionBase[TDataStream,  Generator[TDataStream, None, None]]":
-        def _reader(params: Generator[TDataStream, None, None] = generator) -> List[TDataStream]:
-            return list(params)
-
-        c = DataStreamCollectionBase[TDataStream, Generator[TDataStream, None, None]](name=name, **kwargs)
-        c._reader = _reader
-        c.parameters = generator
-        return c
 
 
 class DataStreamCollection(DataStreamCollectionBase[DataStream, _typing.UnsetParamsType]):

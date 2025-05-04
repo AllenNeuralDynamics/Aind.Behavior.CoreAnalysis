@@ -8,6 +8,7 @@ from ._core import DataStream
 
 P = ParamSpec("P")
 
+
 @dataclass
 class CsvReaderParams(FilePathBaseParam):
     delimiter: Optional[str] = None

@@ -16,7 +16,7 @@ from typing_extensions import TypeAliasType
 from . import FilePathBaseParam
 from ._core import DataStream, DataStreamCollectionBase
 
-HarpRegisterReaderParams: TypeAlias = harp.reader._ReaderParams  
+HarpRegisterReaderParams: TypeAlias = harp.reader._ReaderParams
 
 
 class HarpRegister(DataStream[pd.DataFrame, HarpRegisterReaderParams]):

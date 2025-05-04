@@ -1,9 +1,9 @@
 from ._core import (
     Dataset,
     DataStream,
+    DataStreamCollection,
     DataStreamCollectionBase,
     FilePathBaseParam,
-    DataStreamCollection,
     is_unset,
     print_data_stream_tree,
 )
