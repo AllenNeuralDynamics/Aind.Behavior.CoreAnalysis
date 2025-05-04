@@ -1,7 +1,7 @@
 import abc
 import dataclasses
 import os
-from typing import Any, Callable, Dict, Generator, Generic, List, Optional, Self, TypeVar
+from typing import Any, Dict, Generator, Generic, List, Optional, Self, TypeVar
 
 from typing_extensions import override
 
@@ -35,8 +35,7 @@ class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
         return self._description
 
     _reader: _typing.IReader[_typing.TData, _typing.TReaderParams] = _typing.UnsetReader
-
-    parameters: Callable[..., _typing.TReaderParams]
+    parameters: _typing.TReaderParams
 
     def read(self, reader_params: Optional[_typing.TReaderParams] = None) -> _typing.TData:
         reader_params = reader_params if reader_params is not None else self._reader_params
@@ -175,11 +174,11 @@ class DataStreamCollectionBase(
 
         c = DataStreamCollectionBase[TDataStream, Generator[TDataStream, None, None]](name=name, **kwargs)
         c._reader = _reader
-        c.parameters = lambda _: generator
+        c.parameters = generator
         return c
 
 
-class AnonymousDataStreamCollection(DataStreamCollectionBase[DataStream, _typing.UnsetParamsType]):
+class DataStreamCollection(DataStreamCollectionBase[DataStream, _typing.UnsetParamsType]):
     @override
     def __init__(
         self,
@@ -257,7 +256,7 @@ def print_data_stream_tree(
     icon_map = {
         DataStream: "📄",
         DataStreamCollectionBase: "📂",
-        AnonymousDataStreamCollection: "🧊",
+        DataStreamCollection: "🧊",
         None: "❓",
         _typing.UnsetParams: "❓",
         _typing.UnsetReader: "❓",

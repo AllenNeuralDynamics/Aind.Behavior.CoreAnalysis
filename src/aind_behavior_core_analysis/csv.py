@@ -14,7 +14,7 @@ class CsvReaderParams(FilePathBaseParam):
     index: Optional[str] = None
 
 
-class CsvDataStream(DataStream[pd.DataFrame, CsvReaderParams]):
+class Csv(DataStream[pd.DataFrame, CsvReaderParams]):
     @staticmethod
     def _reader(params: CsvReaderParams) -> pd.DataFrame:
         data = pd.read_csv(params.path, delimiter=params.delimiter, header=0 if params.strict_header else None)
