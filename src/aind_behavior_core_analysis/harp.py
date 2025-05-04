@@ -11,23 +11,38 @@ import pandas as pd
 import requests
 import yaml
 from pydantic import AnyHttpUrl, BaseModel, Field, dataclasses
-from typing_extensions import TypeAliasType
+from typing_extensions import TypeAliasType, override
 
 from . import FilePathBaseParam
-from ._core import DataStream, DataStreamCollectionBase
+from ._core import DataStream, DataStreamCollectionBase, is_unset
 
 HarpRegisterReaderParams: TypeAlias = harp.reader._ReaderParams
+
+_DEFAULT_HARP_READER_PARAMS = HarpRegisterReaderParams(base_path=None, epoch=None, keep_type=True)
 
 
 class HarpRegister(DataStream[pd.DataFrame, HarpRegisterReaderParams]):
     make_params = HarpRegisterReaderParams
 
+    @override
+    def read(self, reader_params: Optional[HarpRegisterReaderParams] = None) -> pd.DataFrame:
+        reader_params = reader_params if reader_params is not None else self._reader_params
+        if is_unset(reader_params):
+            raise ValueError("Reader parameters are not set. Cannot read data.")
+        return self._reader(reader_params.base_path, epoch=reader_params.epoch, keep_type=reader_params.keep_type)
+
     @classmethod
-    def from_register_reader(cls, name: str, reg_reader: harp.reader.RegisterReader) -> Self:
+    def from_register_reader(
+        cls,
+        name: str,
+        reg_reader: harp.reader.RegisterReader,
+        params: HarpRegisterReaderParams = _DEFAULT_HARP_READER_PARAMS,
+    ) -> Self:
         c = cls(
             name=name,
             description=reg_reader.register.description,
         )
+        c.bind_reader_params(params)
         c._reader = reg_reader.read
         c.make_params = cls.make_params
         return c
@@ -130,16 +145,7 @@ def _harp_device_reader(
 
     for name, reg_reader in reader.registers.items():
         # todo we can add custom file name interpolation here
-        def _reader(
-            params: HarpRegisterReaderParams, reg_reader: harp.reader.RegisterReader = reg_reader
-        ) -> pd.DataFrame:
-            return reg_reader.read(params.base_path, epoch=params.epoch, keep_type=params.keep_type)
-
-        data_streams.append(
-            HarpRegister.from_register_reader(name, reg_reader).bind_reader_params(
-                HarpRegister.make_params(base_path=None, epoch=params.epoch, keep_type=params.keep_type)
-            )
-        )
+        data_streams.append(HarpRegister.from_register_reader(name, reg_reader, _DEFAULT_HARP_READER_PARAMS))
     return data_streams
 
 
@@ -202,4 +208,7 @@ def fetch_who_am_i_list(
 
 class HarpDevice(DataStreamCollectionBase[HarpRegister, HarpDeviceReaderParams]):
     make_params = HarpDeviceReaderParams
-    _reader = _harp_device_reader
+
+    @staticmethod
+    def _reader(params: HarpDeviceReaderParams) -> List[HarpRegister]:
+        return _harp_device_reader(params)

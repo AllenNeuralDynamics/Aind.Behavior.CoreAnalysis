@@ -58,6 +58,10 @@ class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
         """Get a data stream by key."""
         raise NotImplementedError("This method is not implemented for DataStream.")
 
+    def __getitem__(self, name: str) -> "DataStream":
+        """Get a data stream by key."""
+        return self.at(name)
+
     @property
     def has_data(self) -> bool:
         """Check if the data stream has data."""
@@ -196,6 +200,13 @@ class DataStreamCollection(DataStreamCollectionBase[DataStream, _typing.UnsetPar
         """Reader function to read data from the generator."""
         return self._data
 
+    @override
+    def read(self, *args, **kwargs) -> List[DataStream]:
+        """Read data from the generator."""
+        if not self.has_data:
+            raise ValueError("Data streams have not been read yet.")
+        return self._data
+
     def bind_data_streams(self, data_streams: List[DataStream]) -> Self:
         """Bind data streams to the data stream group."""
         if self.has_data:
@@ -238,39 +249,36 @@ class Dataset:
     description: str
     data_streams: DataStream
 
-    def tree(self, exclude_params: bool = False, print_if_none: bool = False) -> str:
-        return print_data_stream_tree(self.data_streams, exclude_params=exclude_params, print_if_none=print_if_none)
+    def tree(self) -> str:
+        return print_data_stream_tree(self.data_streams)
 
 
-def print_data_stream_tree(
-    node: DataStream, prefix="", *, exclude_params: bool = False, print_if_none: bool = False
-) -> str:
+def print_data_stream_tree(node: DataStream, prefix="") -> str:
     icon_map = {
         DataStream: "📄",
         DataStreamCollectionBase: "📂",
-        DataStreamCollection: "🧊",
         None: "❓",
-        _typing.UnsetParams: "❓",
-        _typing.UnsetReader: "❓",
-        _typing.UnsetData: "❓",
     }
 
-    s_builder = ""
-    s_builder = s_builder.rstrip("\n")
+    lines = []
 
+    # Determine the icon for the current node
     if isinstance(node, DataStreamCollectionBase):
-        if not node.has_data:
-            s_builder += f"\n{prefix}{icon_map[None]} Not loaded"
-        else:
-            for child in node.data:
-                s_builder += f"\n{prefix}{icon_map[type(child)]} {child.name}"
-                child_tree = print_data_stream_tree(
-                    child, prefix + "    ", exclude_params=exclude_params, print_if_none=print_if_none
-                )
-                if child_tree:
-                    s_builder += f"\n{child_tree}"
+        node_icon = icon_map[DataStreamCollectionBase]
+    elif isinstance(node, DataStream):
+        node_icon = icon_map[DataStream]
+    if not node.has_data:
+        node_icon += icon_map[None]
 
-    return s_builder.strip()
+    # Add the current node to the tree
+    lines.append(f"{prefix}{node_icon} {node.name}")
+
+    # If the node is a collection, recursively process its children
+    if isinstance(node, DataStreamCollectionBase) and node.has_data:
+        for child in node.data:
+            lines.append(print_data_stream_tree(child, prefix=prefix + "    "))
+
+    return "\n".join(lines)
 
 
 @dataclasses.dataclass
