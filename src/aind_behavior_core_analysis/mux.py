@@ -1,38 +1,48 @@
 import dataclasses
+import os
 from pathlib import Path
 from typing import Any, Callable, Generic, List, Optional, Type, TypeVar
 
-from . import DataStream, DataStreamCollectionBase, FilePathBaseParam
+from . import DataStream, DataStreamCollectionBase, _typing
 
-_TDataStreamPathAware = TypeVar("TDataStreamPathAware", bound=DataStream[Any, FilePathBaseParam])
+_TDataStream = TypeVar("_TDataStream", bound=DataStream[Any, _typing.TReaderParams])
 
 
 @dataclasses.dataclass
-class FileMuxReaderParams(FilePathBaseParam, Generic[_TDataStreamPathAware]):
+class FileMuxReaderParams(Generic[_TDataStream]):
+    paths: List[os.PathLike]
     include_glob_pattern: List[str]
-    inner_data_stream: Type[_TDataStreamPathAware]
-    inner_param_factory: Callable[[str], FilePathBaseParam]
-    as_collection: bool = False
+    inner_data_stream: Type[_TDataStream]
+    inner_param_factory: Callable[[str], _typing.TReaderParams]
+    as_collection: bool = True
     exclude_glob_pattern: List[str] = dataclasses.field(default_factory=list)
     inner_descriptions: dict[str, Optional[str]] = dataclasses.field(default_factory=dict)
 
+    def __post_init__(self):
+        if isinstance(self.paths, (str, os.PathLike)):
+            self.paths = [self.paths]
+        if len(self.paths) == 0:
+            raise ValueError("At least one path must be provided.")
 
-class FromFileMux(DataStreamCollectionBase[_TDataStreamPathAware, FileMuxReaderParams]):
+
+class FromFileMux(DataStreamCollectionBase[_TDataStream, FileMuxReaderParams]):
     make_params = FileMuxReaderParams
 
     @staticmethod
-    def _reader(params: FileMuxReaderParams[_TDataStreamPathAware]) -> List[_TDataStreamPathAware]:
+    def _reader(params: FileMuxReaderParams[_TDataStream]) -> List[_TDataStream]:
         _hits: List[Path] = []
-        for pattern in params.include_glob_pattern:
-            _hits.extend(list(Path(params.path).glob(pattern)))
-        for pattern in params.exclude_glob_pattern:
-            _hits = [f for f in _hits if not f.match(pattern)]
-        _hits = list(set(_hits))
+
+        for p in params.paths:
+            for pattern in params.include_glob_pattern:
+                _hits.extend(list(Path(p).glob(pattern)))
+            for pattern in params.exclude_glob_pattern:
+                _hits = [f for f in _hits if not f.match(pattern)]
+            _hits = list(set(_hits))
 
         if len(list(set([f.stem for f in _hits]))) != len(_hits):
             raise ValueError(f"Duplicate stems found in glob pattern: {params.include_glob_pattern}.")
 
-        _out: List[_TDataStreamPathAware] = []
+        _out: List[_TDataStream] = []
         _descriptions = params.inner_descriptions
         for f in _hits:
             _out.append(
