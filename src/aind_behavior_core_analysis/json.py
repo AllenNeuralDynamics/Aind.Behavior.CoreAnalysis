@@ -23,7 +23,7 @@ class Json(DataStream[dict[str, str], JsonReaderParams]):
             data = json.load(file)
         return data
 
-    parameters = JsonReaderParams
+    make_params = JsonReaderParams
 
 
 class MultiLineJson(DataStream[list[dict[str, str]], JsonReaderParams]):
@@ -33,7 +33,7 @@ class MultiLineJson(DataStream[list[dict[str, str]], JsonReaderParams]):
             data = [json.loads(line) for line in file]
         return data
 
-    parameters = JsonReaderParams
+    make_params = JsonReaderParams
 
 
 _TModel = TypeVar("_TModel", bound=pydantic.BaseModel)
@@ -51,7 +51,7 @@ class PydanticModel(DataStream[_TModel, PydanticModelReaderParams[_TModel]]):
         with open(params.path, "r", encoding=params.encoding) as file:
             return params.model.model_validate_json(file.read())
 
-    parameters = PydanticModelReaderParams
+    make_params = PydanticModelReaderParams
 
 
 @dataclasses.dataclass
@@ -73,7 +73,7 @@ class MultiLinePydanticModel(DataStream[pd.DataFrame, MultiLinePydanticModelRead
             model_ls.set_index(params.index, inplace=True)
         return model_ls
 
-    parameters = MultiLinePydanticModelReaderParams
+    make_params = MultiLinePydanticModelReaderParams
 
 
 def multi_line_pydantic_model_reader(params: MultiLinePydanticModelReaderParams[_TModel]) -> List[_TModel]:

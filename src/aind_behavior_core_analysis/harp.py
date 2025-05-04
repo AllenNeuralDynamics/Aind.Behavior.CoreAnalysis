@@ -20,7 +20,7 @@ HarpRegisterReaderParams: TypeAlias = harp.reader._ReaderParams
 
 
 class HarpRegister(DataStream[pd.DataFrame, HarpRegisterReaderParams]):
-    parameters = HarpRegisterReaderParams
+    make_params = HarpRegisterReaderParams
 
     @classmethod
     def from_register_reader(cls, name: str, reg_reader: harp.reader.RegisterReader) -> Self:
@@ -29,7 +29,7 @@ class HarpRegister(DataStream[pd.DataFrame, HarpRegisterReaderParams]):
             description=reg_reader.register.description,
         )
         c._reader = reg_reader.read
-        c.parameters = cls.parameters
+        c.make_params = cls.make_params
         return c
 
 
@@ -137,7 +137,7 @@ def _harp_device_reader(
 
         data_streams.append(
             HarpRegister.from_register_reader(name, reg_reader).bind_reader_params(
-                HarpRegister.parameters(base_path=None, epoch=params.epoch, keep_type=params.keep_type)
+                HarpRegister.make_params(base_path=None, epoch=params.epoch, keep_type=params.keep_type)
             )
         )
     return data_streams
@@ -201,5 +201,5 @@ def fetch_who_am_i_list(
 
 
 class HarpDevice(DataStreamCollectionBase[HarpRegister, HarpDeviceReaderParams]):
-    parameters = HarpDeviceReaderParams
+    make_params = HarpDeviceReaderParams
     _reader = _harp_device_reader

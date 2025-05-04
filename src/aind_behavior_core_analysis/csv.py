@@ -1,11 +1,12 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, ParamSpec
 
 import pandas as pd
 
 from . import FilePathBaseParam
 from ._core import DataStream
 
+P = ParamSpec("P")
 
 @dataclass
 class CsvReaderParams(FilePathBaseParam):
@@ -22,4 +23,7 @@ class Csv(DataStream[pd.DataFrame, CsvReaderParams]):
             data.set_index(params.index, inplace=True)
         return data
 
-    parameters = CsvReaderParams
+    make_params = CsvReaderParams
+
+
+Csv.make_params()

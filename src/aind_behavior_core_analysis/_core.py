@@ -1,7 +1,7 @@
 import abc
 import dataclasses
 import os
-from typing import Any, Dict, Generator, Generic, List, Optional, Self, TypeVar
+from typing import Any, Dict, Generator, Generic, List, Optional, Self, TypeVar, Callable, ParamSpec
 
 from typing_extensions import override
 
@@ -11,6 +11,7 @@ from aind_behavior_core_analysis import _typing
 def is_unset(obj: Any) -> bool:
     return (obj is _typing.UnsetReader) or (obj is _typing.UnsetParams) or (obj is _typing.UnsetData)
 
+P = ParamSpec("P")
 
 class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
     def __init__(
@@ -35,7 +36,8 @@ class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
         return self._description
 
     _reader: _typing.IReader[_typing.TData, _typing.TReaderParams] = _typing.UnsetReader
-    parameters: _typing.TReaderParams
+    
+    make_params = NotImplementedError("make_params is not implemented for DataStream.")
 
     def read(self, reader_params: Optional[_typing.TReaderParams] = None) -> _typing.TData:
         reader_params = reader_params if reader_params is not None else self._reader_params

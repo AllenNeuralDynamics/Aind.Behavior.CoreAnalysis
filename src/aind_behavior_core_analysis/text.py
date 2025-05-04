@@ -15,4 +15,4 @@ class Text(DataStream[str, TextReaderParams]):
         with open(params.path, "r", encoding=params.encoding) as file:
             return file.read()
 
-    parameters = TextReaderParams
+    make_params = TextReaderParams
