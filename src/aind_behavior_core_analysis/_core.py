@@ -1,7 +1,7 @@
 import abc
 import dataclasses
 import os
-from typing import Any, Dict, Generator, Generic, List, Optional, ParamSpec, Self, TypeVar
+from typing import Any, ClassVar, Dict, Generator, Generic, List, Optional, ParamSpec, Self, TypeVar
 
 from typing_extensions import override
 
@@ -16,6 +16,8 @@ P = ParamSpec("P")
 
 
 class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
+    _is_collection: ClassVar[bool] = False
+
     def __init__(
         self: Self,
         name: str,
@@ -36,6 +38,10 @@ class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
     @property
     def description(self) -> Optional[str]:
         return self._description
+
+    @property
+    def is_collection(self) -> bool:
+        return self._is_collection
 
     _reader: _typing.IReader[_typing.TData, _typing.TReaderParams] = _typing.UnsetReader
 
@@ -98,6 +104,8 @@ class DataStreamCollectionBase(
     DataStream[List[TDataStream], _typing.TReaderParams],
     Generic[TDataStream, _typing.TReaderParams],
 ):
+    _is_collection: ClassVar[bool] = True
+
     def __init__(
         self: Self,
         name: str,
@@ -248,37 +256,6 @@ class Dataset:
     version: str
     description: str
     data_streams: DataStream
-
-    def tree(self) -> str:
-        return print_data_stream_tree(self.data_streams)
-
-
-def print_data_stream_tree(node: DataStream, prefix="") -> str:
-    icon_map = {
-        DataStream: "📄",
-        DataStreamCollectionBase: "📂",
-        None: "❓",
-    }
-
-    lines = []
-
-    # Determine the icon for the current node
-    if isinstance(node, DataStreamCollectionBase):
-        node_icon = icon_map[DataStreamCollectionBase]
-    elif isinstance(node, DataStream):
-        node_icon = icon_map[DataStream]
-    if not node.has_data:
-        node_icon += icon_map[None]
-
-    # Add the current node to the tree
-    lines.append(f"{prefix}{node_icon} {node.name}")
-
-    # If the node is a collection, recursively process its children
-    if isinstance(node, DataStreamCollectionBase) and node.has_data:
-        for child in node.data:
-            lines.append(print_data_stream_tree(child, prefix=prefix + "    "))
-
-    return "\n".join(lines)
 
 
 @dataclasses.dataclass
