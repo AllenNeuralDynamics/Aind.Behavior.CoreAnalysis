@@ -15,8 +15,7 @@ This repository is part of a bigger infrastructure that is summarized [here](htt
 
 ## Getting started and API usage
 
-The current goal of the API is to provide users with a way to instantiate "data contracts" and corresponding data ingestion logic. For instance, loading the data from different streams and converting them into a common format (e.g. `pandas.DataFrame`) can be done by:
-For examples of what this looks like, please check the [Examples](./examples/) folder.
+The current goal of the API is to provide users with a way to instantiate "data contracts" and corresponding data ingestion logic. For instance, loading the data from different streams and converting them into a common format (e.g. `pandas.DataFrame`). For examples of what this looks like, please check the [Examples](./examples/) folder.
 
 ## Installing and Upgrading
 
@@ -32,40 +31,23 @@ Otherwise, you can use pip:
 pip install aind-behavior-core-analysis@https://github.com/AllenNeuralDynamics/Aind.Behavior.CoreAnalysis
 ```
 
+## Contributors
 
-## Contributing
+Contributions to this repository are welcome! However, please ensure that your code adheres to the recommended DevOps practices below:
 
-If you would like to contribute to this repository, open an `Issue` and/or `Pull Request` on this repository. 
+### Linting
 
-### Linters and testing
+We use [ruff](https://docs.astral.sh/ruff/) as our primary linting tool.
 
-- Install the provided linting and testing tools in the `project.toml`.
+### Testing
 
-#### Tests
+Attempt to add tests when new features are added.
+To run the currently available tests, run `python -m unittest` from the root of the repository.
 
-To run tests locally, run the following command from the root directory of the repository:
+### Lock files
 
-```
-python -m unittest
-```
+We use [uv](https://docs.astral.sh/uv/) to manage our lock files.
 
-#### Linters
+### Versioning
 
-
-- Use **flake8** to check that code is up to standards (no unused imports, etc.):
-
-```
-flake8 .
-```
-
-- Use **black** to automatically format the code into PEP standards:
-
-```
-black .
-```
-
-- Use **isort** to automatically sort import statements:
-
-```
-isort .
-```
+Where possible, adhere to [Semantic Versioning](https://semver.org/).
