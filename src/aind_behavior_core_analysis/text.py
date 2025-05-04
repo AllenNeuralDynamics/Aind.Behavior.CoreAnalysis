@@ -5,14 +5,14 @@ from ._core import DataStream
 
 
 @dataclass
-class TextReaderParams(FilePathBaseParam):
+class TextParams(FilePathBaseParam):
     encoding: str = "UTF-8"
 
 
-class Text(DataStream[str, TextReaderParams]):
+class Text(DataStream[str, TextParams]):
     @staticmethod
-    def _reader(params: TextReaderParams) -> str:
+    def _reader(params: TextParams) -> str:
         with open(params.path, "r", encoding=params.encoding) as file:
             return file.read()
 
-    make_params = TextReaderParams
+    make_params = TextParams

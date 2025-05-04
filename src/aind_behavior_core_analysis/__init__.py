@@ -4,7 +4,6 @@ from ._core import (
     DataStreamCollection,
     DataStreamCollectionBase,
     FilePathBaseParam,
-    is_unset,
 )
 
 __version__ = "0.0.0"
@@ -15,5 +14,4 @@ __all__ = [
     "DataStreamCollectionBase",
     "FilePathBaseParam",
     "DataStreamCollection",
-    "is_unset",
 ]

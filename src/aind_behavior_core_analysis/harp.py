@@ -13,21 +13,21 @@ import yaml
 from pydantic import AnyHttpUrl, BaseModel, Field, dataclasses
 from typing_extensions import TypeAliasType, override
 
-from . import FilePathBaseParam
-from ._core import DataStream, DataStreamCollectionBase, is_unset
+from . import FilePathBaseParam, _typing
+from ._core import DataStream, DataStreamCollectionBase
 
-HarpRegisterReaderParams: TypeAlias = harp.reader._ReaderParams
+HarpRegisterParams: TypeAlias = harp.reader._ReaderParams
 
-_DEFAULT_HARP_READER_PARAMS = HarpRegisterReaderParams(base_path=None, epoch=None, keep_type=True)
+_DEFAULT_HARP_READER_PARAMS = HarpRegisterParams(base_path=None, epoch=None, keep_type=True)
 
 
-class HarpRegister(DataStream[pd.DataFrame, HarpRegisterReaderParams]):
-    make_params = HarpRegisterReaderParams
+class HarpRegister(DataStream[pd.DataFrame, HarpRegisterParams]):
+    make_params = HarpRegisterParams
 
     @override
-    def read(self, reader_params: Optional[HarpRegisterReaderParams] = None) -> pd.DataFrame:
+    def read(self, reader_params: Optional[HarpRegisterParams] = None) -> pd.DataFrame:
         reader_params = reader_params if reader_params is not None else self._reader_params
-        if is_unset(reader_params):
+        if _typing.is_unset(reader_params):
             raise ValueError("Reader parameters are not set. Cannot read data.")
         return self._reader(reader_params.base_path, epoch=reader_params.epoch, keep_type=reader_params.keep_type)
 
@@ -36,7 +36,7 @@ class HarpRegister(DataStream[pd.DataFrame, HarpRegisterReaderParams]):
         cls,
         name: str,
         reg_reader: harp.reader.RegisterReader,
-        params: HarpRegisterReaderParams = _DEFAULT_HARP_READER_PARAMS,
+        params: HarpRegisterParams = _DEFAULT_HARP_READER_PARAMS,
     ) -> Self:
         c = cls(
             name=name,
@@ -85,7 +85,7 @@ else:
 
 
 @dataclasses.dataclass
-class HarpDeviceReaderParams(FilePathBaseParam):
+class HarpDeviceParams(FilePathBaseParam):
     device_yml_hint: DeviceYmlSource = Field(
         default=DeviceYmlByFile(), description="Device yml hint", validate_default=True
     )
@@ -98,7 +98,7 @@ class HarpDeviceReaderParams(FilePathBaseParam):
 
 
 def _harp_device_reader(
-    params: HarpDeviceReaderParams,
+    params: HarpDeviceParams,
 ) -> List[HarpRegister]:
     _yml_stream: str | os.PathLike | TextIO
     match params.device_yml_hint:
@@ -149,9 +149,7 @@ def _harp_device_reader(
     return data_streams
 
 
-def _make_device_reader(
-    yml_stream: str | os.PathLike | TextIO, params: HarpDeviceReaderParams
-) -> harp.reader.DeviceReader:
+def _make_device_reader(yml_stream: str | os.PathLike | TextIO, params: HarpDeviceParams) -> harp.reader.DeviceReader:
     device = harp.read_schema(yml_stream, include_common_registers=params.include_common_registers)
     path = Path(params.path)
     base_path = path / device.device if path.is_dir() else path.parent / device.device
@@ -159,7 +157,7 @@ def _make_device_reader(
         name: harp.reader._create_register_handler(
             device,
             name,
-            HarpRegisterReaderParams(base_path=base_path, epoch=params.epoch, keep_type=params.keep_type),
+            HarpRegisterParams(base_path=base_path, epoch=params.epoch, keep_type=params.keep_type),
         )
         for name in device.registers.keys()
     }
@@ -206,9 +204,9 @@ def fetch_who_am_i_list(
     return devices
 
 
-class HarpDevice(DataStreamCollectionBase[HarpRegister, HarpDeviceReaderParams]):
-    make_params = HarpDeviceReaderParams
+class HarpDevice(DataStreamCollectionBase[HarpRegister, HarpDeviceParams]):
+    make_params = HarpDeviceParams
 
     @staticmethod
-    def _reader(params: HarpDeviceReaderParams) -> List[HarpRegister]:
+    def _reader(params: HarpDeviceParams) -> List[HarpRegister]:
         return _harp_device_reader(params)

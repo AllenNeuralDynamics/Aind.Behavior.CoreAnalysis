@@ -9,7 +9,7 @@ _TDataStream = TypeVar("_TDataStream", bound=DataStream[Any, _typing.TReaderPara
 
 
 @dataclasses.dataclass
-class FileMuxReaderParams(Generic[_TDataStream]):
+class MapFromPathsParams(Generic[_TDataStream]):
     paths: List[os.PathLike]
     include_glob_pattern: List[str]
     inner_data_stream: Type[_TDataStream]
@@ -25,11 +25,11 @@ class FileMuxReaderParams(Generic[_TDataStream]):
             raise ValueError("At least one path must be provided.")
 
 
-class FromFileMux(DataStreamCollectionBase[_TDataStream, FileMuxReaderParams]):
-    make_params = FileMuxReaderParams
+class MapFromPaths(DataStreamCollectionBase[_TDataStream, MapFromPathsParams]):
+    make_params = MapFromPathsParams
 
     @staticmethod
-    def _reader(params: FileMuxReaderParams[_TDataStream]) -> List[_TDataStream]:
+    def _reader(params: MapFromPathsParams[_TDataStream]) -> List[_TDataStream]:
         _hits: List[Path] = []
 
         for p in params.paths:

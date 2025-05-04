@@ -1,18 +1,11 @@
 import abc
 import dataclasses
 import os
-from typing import Any, ClassVar, Dict, Generator, Generic, List, Optional, ParamSpec, Self, TypeVar
+from typing import Any, ClassVar, Dict, Generator, Generic, List, Optional, Self, TypeVar
 
 from typing_extensions import override
 
 from aind_behavior_core_analysis import _typing
-
-
-def is_unset(obj: Any) -> bool:
-    return (obj is _typing.UnsetReader) or (obj is _typing.UnsetParams) or (obj is _typing.UnsetData)
-
-
-P = ParamSpec("P")
 
 
 class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
@@ -49,13 +42,13 @@ class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
 
     def read(self, reader_params: Optional[_typing.TReaderParams] = None) -> _typing.TData:
         reader_params = reader_params if reader_params is not None else self._reader_params
-        if is_unset(reader_params):
+        if _typing.is_unset(reader_params):
             raise ValueError("Reader parameters are not set. Cannot read data.")
         return self._reader(reader_params)
 
     def bind_reader_params(self, params: _typing.TReaderParams) -> Self:
         """Bind reader parameters to the data stream."""
-        if not is_unset(self._reader_params):
+        if not _typing.is_unset(self._reader_params):
             raise ValueError("Reader parameters are already set. Cannot bind again.")
         self._reader_params = params
         return self
@@ -71,7 +64,7 @@ class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
     @property
     def has_data(self) -> bool:
         """Check if the data stream has data."""
-        return not is_unset(self._data)
+        return not _typing.is_unset(self._data)
 
     @property
     def data(self) -> _typing.TData:
@@ -248,6 +241,15 @@ class DataStreamCollection(DataStreamCollectionBase[DataStream, _typing.UnsetPar
         self._data.remove(self._hashmap[name])
         self._update_hashmap()
         return
+
+    def from_data_stream(data_stream: DataStream) -> Self:
+        """Create a DataStreamCollection from a DataStream object."""
+        if not isinstance(data_stream, DataStream):
+            raise TypeError("data_stream must be an instance of DataStream.")
+        if not data_stream.has_data:
+            raise ValueError("DataStream has not been loaded yet. Cannot create DataStreamCollection.")
+        data = data_stream.data if data_stream.is_collection else [data_stream.data]
+        return DataStreamCollection(name=data_stream.name, data_streams=data, description=data_stream.description)
 
 
 @dataclasses.dataclass
