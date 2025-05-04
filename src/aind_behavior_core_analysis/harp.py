@@ -3,7 +3,7 @@ import io
 import os
 from functools import cache
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Any, Dict, List, Literal, Optional, TextIO, Union
+from typing import TYPE_CHECKING, Annotated, Any, Dict, List, Literal, Optional, Self, TextIO, TypeAlias, Union
 
 import harp
 import harp.reader
@@ -13,10 +13,24 @@ import yaml
 from pydantic import AnyHttpUrl, BaseModel, Field, dataclasses
 from typing_extensions import TypeAliasType
 
-from aind_behavior_core_analysis import _typing
-from aind_behavior_core_analysis._core import DataStream
-
 from . import FilePathBaseParam
+from ._core import DataStream, DataStreamCollectionBase
+
+HarpRegisterReaderParams: TypeAlias = harp.reader._ReaderParams
+
+
+class HarpRegister(DataStream[pd.DataFrame, HarpRegisterReaderParams]):
+    make_params = HarpRegisterReaderParams
+
+    @classmethod
+    def from_register_reader(cls, name: str, reg_reader: harp.reader.RegisterReader) -> Self:
+        c = cls(
+            name=name,
+            description=reg_reader.register.description,
+        )
+        c._reader = reg_reader.read
+        c.make_params = cls.make_params
+        return c
 
 
 class _DeviceYmlSource(BaseModel):
@@ -68,64 +82,62 @@ class HarpDeviceReaderParams(FilePathBaseParam):
     )
 
 
-def harp_device_reader(
+def _harp_device_reader(
     params: HarpDeviceReaderParams,
-) -> List[DataStream[pd.DataFrame, harp.reader._ReaderParams, _typing.UnsetParamsType]]:
+) -> List[HarpRegister]:
     _yml_stream: str | os.PathLike | TextIO
+    match params.device_yml_hint:
+        case DeviceYmlByWhoAmI(who_am_i=who_am_i):
+            # If WhoAmI is provided we xref it to the device list to find the correct device.yml
+            _yml_stream = io.TextIOWrapper(fetch_yml_from_who_am_i(who_am_i))
 
-    # If WhoAmI is provided we xref it to the device list to find the correct device.yml
-    if isinstance(params.device_yml_hint, DeviceYmlByWhoAmI):
-        _yml_stream = io.TextIOWrapper(fetch_yml_from_who_am_i(params.device_yml_hint.who_am_i))
+        case DeviceYmlByRegister0(register0_glob_pattern=glob_pattern):
+            # If we are allowed to infer the WhoAmI, we try to find it
+            _reg_0_hint: List[os.PathLike] = []
+            for pattern in glob_pattern:
+                _reg_0_hint.extend(Path(params.path).glob(pattern))
+            if len(_reg_0_hint) == 0:
+                raise FileNotFoundError(
+                    "File corresponding to WhoAmI register not found given the provided glob patterns."
+                )
+            device_hint = int(
+                harp.read(_reg_0_hint[0]).values[0][0]
+            )  # We read the first line of the file to get the WhoAmI value
+            _yml_stream = io.TextIOWrapper(fetch_yml_from_who_am_i(device_hint))
 
-    # If we are allowed to infer the WhoAmI, we try to find it, and
-    # it is simply a subset of the previous case
-    elif isinstance(params.device_yml_hint, DeviceYmlByRegister0):
-        _reg_0_hint: List[os.PathLike] = []
-        for pattern in params.device_yml_hint.register0_glob_pattern:
-            _reg_0_hint.extend(Path(params.path).glob(pattern))
-        if len(_reg_0_hint) == 0:
-            raise FileNotFoundError("File corresponding to WhoAmI register not found given the provided glob patterns.")
-        device_hint = int(
-            harp.read(_reg_0_hint[0]).values[0][0]
-        )  # We read the first line of the file to get the WhoAmI value
-        _yml_stream = io.TextIOWrapper(fetch_yml_from_who_am_i(device_hint))
+        case DeviceYmlByFile(path=path):
+            # If a device.yml is provided we trivially pass it to the reader
+            if path is None:
+                path = Path(params.path) / "device.yml"
+            else:
+                path = Path(path)
+            _yml_stream = io.TextIOWrapper(open(path, "rb"))
 
-    # If a device.yml is provided we trivially pass it to the reader
-    elif isinstance(params.device_yml_hint, DeviceYmlByFile):
-        if params.device_yml_hint.path is None:
-            path = Path(params.path) / "device.yml"
-        else:
-            path = Path(params.device_yml_hint.path)
-        _yml_stream = io.TextIOWrapper(open(path, "rb"))
+        case DeviceYmlByUrl(url=url):
+            # If a device.yml URL is provided we fetch it and pass it to the reader
+            response = requests.get(url, allow_redirects=True, timeout=5)
+            response.raise_for_status()
+            if response.status_code == 200:
+                _yml_stream = io.TextIOWrapper(io.BytesIO(response.content))
+            else:
+                raise ValueError(f"Failed to fetch device yml from {url}")
 
-    # If a device.yml URL is provided we fetch it and pass it to the reader
-    elif isinstance(params.device_yml_hint, DeviceYmlByUrl):
-        response = requests.get(params.device_yml_hint.url, allow_redirects=True, timeout=5)
-        response.raise_for_status()
-        if response.status_code == 200:
-            _yml_stream = io.TextIOWrapper(io.BytesIO(response.content))
-        else:
-            raise ValueError(f"Failed to fetch device yml from {params.device_yml_hint.url}")
-
-    else:
-        raise ValueError("Invalid device yml hint")
+        case _:
+            raise ValueError("Invalid device yml hint")
 
     reader = _make_device_reader(_yml_stream, params)
-    data_streams: List[DataStream[pd.DataFrame, harp.reader._ReaderParams, _typing.UnsetParamsType]] = []
+    data_streams: List[HarpRegister] = []
 
     for name, reg_reader in reader.registers.items():
         # todo we can add custom file name interpolation here
         def _reader(
-            params: harp.reader._ReaderParams, reg_reader: harp.reader.RegisterReader = reg_reader
+            params: HarpRegisterReaderParams, reg_reader: harp.reader.RegisterReader = reg_reader
         ) -> pd.DataFrame:
             return reg_reader.read(params.base_path, epoch=params.epoch, keep_type=params.keep_type)
 
         data_streams.append(
-            DataStream(
-                name=name,
-                description=reg_reader.register.description if reg_reader.register.description else None,
-                reader=_reader,
-                reader_params=harp.reader._ReaderParams(base_path=None, epoch=params.epoch, keep_type=params.keep_type),
+            HarpRegister.from_register_reader(name, reg_reader).bind_reader_params(
+                HarpRegister.make_params(base_path=None, epoch=params.epoch, keep_type=params.keep_type)
             )
         )
     return data_streams
@@ -141,7 +153,7 @@ def _make_device_reader(
         name: harp.reader._create_register_handler(
             device,
             name,
-            harp.reader._ReaderParams(base_path=base_path, epoch=params.epoch, keep_type=params.keep_type),
+            HarpRegisterReaderParams(base_path=base_path, epoch=params.epoch, keep_type=params.keep_type),
         )
         for name in device.registers.keys()
     }
@@ -179,10 +191,15 @@ def fetch_yml_from_who_am_i(who_am_i: int, release: str = "main") -> io.BytesIO:
 
 @cache
 def fetch_who_am_i_list(
-    url: str = "https://raw.githubusercontent.com/harp-tech/protocol/main/whoami.yml",
+    url: str = "https://raw.githubusercontent.com/harp-tech/whoami/main/whoami.yml",
 ) -> Dict[int, Any]:
     response = requests.get(url, allow_redirects=True, timeout=5)
     content = response.content.decode("utf-8")
     content = yaml.safe_load(content)
     devices = content["devices"]
     return devices
+
+
+class HarpDevice(DataStreamCollectionBase[HarpRegister, HarpDeviceReaderParams]):
+    make_params = HarpDeviceReaderParams
+    _reader = _harp_device_reader
