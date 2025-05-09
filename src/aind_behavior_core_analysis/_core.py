@@ -23,6 +23,7 @@ class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
         self._description = description
         self._reader_params = reader_params if reader_params is not None else _typing.UnsetParams
         self._data = _typing.UnsetData
+        self._parent: Optional["DataStream"] = None
 
     @property
     def name(self) -> str:
@@ -33,12 +34,20 @@ class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
         return self._description
 
     @property
+    def parent(self) -> Optional["DataStream"]:
+        return self._parent
+
+    @property
     def is_collection(self) -> bool:
         return self._is_collection
 
     _reader: _typing.IReader[_typing.TData, _typing.TReaderParams] = _typing.UnsetReader
 
     make_params = NotImplementedError("make_params is not implemented for DataStream.")
+
+    @property
+    def reader_params(self) -> _typing.TReaderParams:
+        return self._reader_params
 
     def read(self, reader_params: Optional[_typing.TReaderParams] = None) -> _typing.TData:
         reader_params = reader_params if reader_params is not None else self._reader_params
@@ -88,8 +97,6 @@ class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
         )
 
 
-# Type hinting doesn't resolve subtypes of generics apparently.
-# We pass the explicit, resolved, inner generics.
 TDataStream = TypeVar("TDataStream", bound=DataStream[Any, Any])
 
 
@@ -120,7 +127,13 @@ class DataStreamCollectionBase(
         if duplicates:
             raise ValueError(f"Duplicate names found in the data stream collection: {set(duplicates)}")
         self._hashmap = {stream.name: stream for stream in self.data}
+        self._update_parent_references()
         return
+
+    def _update_parent_references(self) -> None:
+        """Update parent references for all data streams in the collection."""
+        for stream in self._hashmap.values():
+            stream._parent = self
 
     @override
     def load(self):
