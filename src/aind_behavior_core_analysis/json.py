@@ -3,6 +3,8 @@ import json
 import os
 from typing import Generic, Optional, Type, TypeVar
 
+import aind_behavior_services
+import aind_behavior_services.data_types
 import pandas as pd
 import pydantic
 
@@ -74,3 +76,17 @@ class ManyPydanticModel(DataStream[pd.DataFrame, ManyPydanticModelParams[_TModel
         return model_ls
 
     make_params = ManyPydanticModelParams
+
+
+@dataclasses.dataclass
+class SoftwareEventsParams(ManyPydanticModelParams):
+    model: Type[aind_behavior_services.data_types.SoftwareEvent] = dataclasses.field(
+        default=aind_behavior_services.data_types.SoftwareEvent, init=False
+    )
+    encoding: str = "UTF-8"
+    index: Optional[str] = None
+    column_names: Optional[dict[str, str]] = None
+
+
+class SoftwareEvents(ManyPydanticModel[aind_behavior_services.data_types.SoftwareEvent]):
+    make_params = SoftwareEventsParams
