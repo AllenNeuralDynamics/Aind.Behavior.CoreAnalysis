@@ -1,6 +1,5 @@
 from pathlib import Path
 
-from aind_behavior_services.data_types import SoftwareEvent
 from aind_behavior_services.rig import AindBehaviorRigModel
 from aind_behavior_services.session import AindBehaviorSessionModel
 from aind_behavior_services.task_logic import AindBehaviorTaskLogicModel
@@ -11,10 +10,7 @@ from aind_behavior_core_analysis.harp import (
     DeviceYmlByFile,
     HarpDevice,
 )
-from aind_behavior_core_analysis.json import (
-    ManyPydanticModel,
-    PydanticModel,
-)
+from aind_behavior_core_analysis.json import PydanticModel, SoftwareEvents
 from aind_behavior_core_analysis.mux import MapFromPaths
 from aind_behavior_core_analysis.text import Text
 from aind_behavior_core_analysis.utils import load_branch, print_data_stream_tree
@@ -156,10 +152,9 @@ my_dataset = Dataset(
                         reader_params=MapFromPaths.make_params(
                             paths=[dataset_root / "behavior/SoftwareEvents", dataset_root / "behavior/UpdaterEvents"],
                             include_glob_pattern=["*.json"],
-                            inner_data_stream=ManyPydanticModel,
-                            inner_param_factory=lambda p: ManyPydanticModel.make_params(
+                            inner_data_stream=SoftwareEvents,
+                            inner_param_factory=lambda p: SoftwareEvents.make_params(
                                 path=p,
-                                model=SoftwareEvent,
                                 index="timestamp",
                             ),
                         ),
@@ -192,12 +187,11 @@ my_dataset = Dataset(
                                     path=dataset_root / "behavior/Logs/launcher.log",
                                 ),
                             ),
-                            ManyPydanticModel(
+                            SoftwareEvents(
                                 name="EndSession",
                                 description="A file that determines the end of the session. If the file is empty, the session is still running or it was not closed properly.",
-                                reader_params=ManyPydanticModel.make_params(
+                                reader_params=SoftwareEvents.make_params(
                                     path=dataset_root / "behavior/Logs/EndSession.json",
-                                    model=SoftwareEvent,
                                 ),
                             ),
                         ],
@@ -236,7 +230,15 @@ my_dataset = Dataset(
 )
 
 
+my_dataset.data_streams.walk_data_streams()
 print(my_dataset.data_streams.at("Behavior").at("HarpManipulator").load().at("WhoAmI").load().data)
+len(
+    [
+        x
+        for x in tuple(my_dataset.data_streams.walk_data_streams())
+        if ((not x.is_collection) and isinstance(x, SoftwareEvents))
+    ]
+)
 
 exc = load_branch(my_dataset.data_streams)
 
@@ -244,6 +246,7 @@ for e in exc if exc is not None else []:
     print(f"Stream: {e[0]}")
     print(f"Exception: {e[1]}")
     print()
+
 
 print(my_dataset.data_streams.at("Behavior").at("HarpBehavior").at("WhoAmI").read())
 
@@ -256,6 +259,14 @@ print(my_dataset.data_streams.at("Behavior").at("OperationControl").at("IsStoppe
 print(my_dataset.data_streams.at("Behavior").at("RendererSynchState").data)
 
 print(my_dataset.data_streams["Behavior"]["InputSchemas"]["Session"].data)
+
+
+path = ""
+child = my_dataset.data_streams.at("Behavior").at("SoftwareEvents").at("DepletionVariable")
+while child.parent is not None:
+    path = f"{child.name}:{path}"
+    child = child.parent
+print(path)
 
 with open("my_dataset.md", "w", encoding="UTF-8") as f:
     f.write(print_data_stream_tree(my_dataset.data_streams))
