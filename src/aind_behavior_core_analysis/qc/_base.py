@@ -22,12 +22,20 @@ class ITest(typing.Protocol):
         pass
 
 
-class TestFailure(Exception):
+class FailTest(Exception):
     def __init__(self, result: typing.Any, message: str):
         self.result = result
         self.message = message
         super().__init__(message)
 
+
+class SkipTest(Exception):
+    def __init__(self, message: typing.Optional[str] = None):
+        self.message = message
+        super().__init__(message)
+        
+    def fail(self):
+        raise FailTest(None, self.message) if self.message else None
 
 @dataclasses.dataclass
 class TestResult:
@@ -37,6 +45,7 @@ class TestResult:
     suite_name: str
     _test_reference: typing.Optional[ITest] = dataclasses.field(default=None, repr=False)
     message: typing.Optional[str] = None
+    context: typing.Optional[typing.Any] = dataclasses.field(default=None, repr=False)
     description: typing.Optional[str] = dataclasses.field(default=None, repr=False)
     exception: typing.Optional[Exception] = dataclasses.field(default=None, repr=False)
     traceback: typing.Optional[str] = dataclasses.field(default=None, repr=False)
@@ -47,6 +56,7 @@ def wrap_test(  # noqa: C901
     *,
     message: typing.Optional[str | typing.Callable[[typing.Any], str]] = None,
     description: typing.Optional[str] = None,
+    skippable: bool = True,
 ):
     """
     Decorator for test methods that handles exceptions and standardizes results.
@@ -71,8 +81,34 @@ def wrap_test(  # noqa: C901
 
             try:
                 result = test_func(*args, **kwargs)
-            except TestFailure as e:
-                # Handle the special case of TestFailure
+
+            except SkipTest as e:
+                tb = traceback.format_exc()
+                if skippable:
+                    return TestResult(
+                        status=TestStatus.SKIPPED,
+                        result=None,
+                        test_name=test_name,
+                        suite_name=suite_name,
+                        description=test_description,
+                        message=e.message,
+                        exception=e,
+                        traceback=tb,
+                        _test_reference=test_func,
+                    )
+                else:
+                    return TestResult(
+                        status=TestStatus.FAILED,
+                        result=None,
+                        test_name=test_name,
+                        suite_name=suite_name,
+                        description=test_description,
+                        message=e.message or "Test cannot be skipped",
+                        exception=e,
+                        traceback=tb,
+                        _test_reference=test_func,
+                    )
+            except FailTest as e:
                 tb = traceback.format_exc()
                 return TestResult(
                     status=TestStatus.FAILED,
@@ -80,7 +116,7 @@ def wrap_test(  # noqa: C901
                     test_name=test_name,
                     suite_name=suite_name,
                     description=test_description,
-                    message=e.message,  # Use the message from the exception
+                    message=e.message,
                     exception=e,
                     traceback=tb,
                     _test_reference=test_func,
