@@ -1,11 +1,10 @@
+import abc
 import dataclasses
 import functools
 import inspect
 import traceback
 import typing
 from enum import Enum
-
-from .. import DataStream
 
 
 class TestStatus(Enum):
@@ -18,7 +17,7 @@ class TestStatus(Enum):
 class ITest(typing.Protocol):
     """Protocol for test functions."""
 
-    def __call__(self, datastream: DataStream) -> "TestResult":
+    def __call__(self) -> "TestResult":
         """Run the test on the given datastream and return a TestResult."""
         pass
 
@@ -80,7 +79,7 @@ def wrap_test(message=None, description=None):  # noqa: C901
                         formatted_message = message.format(result=result)
                     except (KeyError, ValueError, AttributeError):
                         formatted_message = message
-    
+
                 if isinstance(result, TestResult):
                     if not result.test_name:
                         result.test_name = test_name
@@ -120,10 +119,7 @@ def wrap_test(message=None, description=None):  # noqa: C901
     return decorator
 
 
-class TestSuite:
-    def __init__(self, data_stream: DataStream):
-        self.data_stream = data_stream
-
+class TestSuite(abc.ABC):
     def get_tests(self) -> typing.Generator[typing.Callable, None, None]:
         for name, method in inspect.getmembers(self, predicate=inspect.ismethod):
             if name.startswith("test_"):
@@ -131,7 +127,7 @@ class TestSuite:
 
     def run_all(self) -> typing.Generator[TestResult, None, None]:
         for test in self.get_tests():
-            yield test(self.data_stream)
+            yield test()
 
 
 class TestRunner:
