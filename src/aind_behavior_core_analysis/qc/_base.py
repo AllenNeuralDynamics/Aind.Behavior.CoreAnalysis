@@ -6,6 +6,13 @@ import traceback
 import typing
 from enum import Enum
 
+_SKIPPABLE = True
+
+
+def set_skippable_ctx(value: bool):
+    global _SKIPPABLE
+    _SKIPPABLE = value
+
 
 class TestStatus(Enum):
     PASSED = "passed"
@@ -33,9 +40,10 @@ class SkipTest(Exception):
     def __init__(self, message: typing.Optional[str] = None):
         self.message = message
         super().__init__(message)
-        
+
     def fail(self):
         raise FailTest(None, self.message) if self.message else None
+
 
 @dataclasses.dataclass
 class TestResult:
@@ -56,7 +64,6 @@ def wrap_test(  # noqa: C901
     *,
     message: typing.Optional[str | typing.Callable[[typing.Any], str]] = None,
     description: typing.Optional[str] = None,
-    skippable: bool = True,
 ):
     """
     Decorator for test methods that handles exceptions and standardizes results.
@@ -70,9 +77,9 @@ def wrap_test(  # noqa: C901
         description (str, optional): A description of what the test does.
     """
 
-    def decorator(test_func):
+    def decorator(test_func): # noqa: C901
         @functools.wraps(test_func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args, **kwargs): # noqa: C901
             test_name = test_func.__name__
             # Use the provided message or the function's docstring as the description
             test_description = description or getattr(test_func, "__doc__", None)
@@ -84,7 +91,7 @@ def wrap_test(  # noqa: C901
 
             except SkipTest as e:
                 tb = traceback.format_exc()
-                if skippable:
+                if _SKIPPABLE:
                     return TestResult(
                         status=TestStatus.SKIPPED,
                         result=None,
