@@ -16,6 +16,10 @@ class HarpBoardTestSuite(qc.TestSuite):
         self.harp_device = harp_device
         self.harp_device_commands = harp_device_commands
 
+    @staticmethod
+    def _get_whoami(device: HarpDevice) -> int:
+        return device["WhoAmI"].data.WhoAmI.iloc[-1]
+
     @qc.wrap_test(
         message=lambda r: "WhoAmI present" if r else "WhoAmI is missing",
         description="Check if the harp board data stream is loaded",
@@ -32,14 +36,21 @@ class HarpBoardTestSuite(qc.TestSuite):
             return False
         if not isinstance(whoAmI.data, pd.DataFrame):
             return False
-        return bool(0000 < whoAmI.data.WhoAmI.iloc[-1] <= 9999)
+        return bool(0000 < self._get_whoami(self.harp_device) <= 9999)
 
     @qc.wrap_test(
         message=lambda r: "WhoAmI matches" if r else "WhoAmI does not match",
         description="Check if the WhoAmI value matches the device's WhoAmI",
     )
     def test_match_whoami(self) -> bool:
-        return bool(self.harp_device["WhoAmI"].data.WhoAmI.iloc[-1] == self.harp_device.device_reader.device.whoAmI + 1)
+        return bool(self._get_whoami(self.harp_device) == self.harp_device.device_reader.device.whoAmI)
+
+    @qc.wrap_test
+    def test_read_dump_is_complete(self) -> bool:
+        """
+        Check if the read dump from an harp device is complete
+        """
+        raise qc.TestFailure(0, "Read dump is not complete")
 
 
-[print(test.description) for test in HarpBoardTestSuite(harp_behavior).run_all()]
+[print(test) for test in HarpBoardTestSuite(harp_behavior).run_all()]

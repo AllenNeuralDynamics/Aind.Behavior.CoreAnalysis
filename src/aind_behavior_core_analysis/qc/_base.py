@@ -22,6 +22,13 @@ class ITest(typing.Protocol):
         pass
 
 
+class TestFailure(Exception):
+    def __init__(self, result: typing.Any, message: str):
+        self.result = result
+        self.message = message
+        super().__init__(message)
+
+
 @dataclasses.dataclass
 class TestResult:
     status: TestStatus
@@ -29,20 +36,23 @@ class TestResult:
     test_name: str
     suite_name: str
     _test_reference: typing.Optional[ITest] = dataclasses.field(default=None, repr=False)
-    message: typing.Optional[str] = dataclasses.field(default=None, repr=False)
+    message: typing.Optional[str] = None
     description: typing.Optional[str] = dataclasses.field(default=None, repr=False)
-    context: typing.Optional[typing.Any] = dataclasses.field(default=None, repr=False)
-    exception: typing.Optional[Exception] = None
-    traceback: typing.Optional[str] = None
+    exception: typing.Optional[Exception] = dataclasses.field(default=None, repr=False)
+    traceback: typing.Optional[str] = dataclasses.field(default=None, repr=False)
 
 
-def wrap_test( # noqa: C901
+def wrap_test(  # noqa: C901
+    func=None,
     *,
     message: typing.Optional[str | typing.Callable[[typing.Any], str]] = None,
     description: typing.Optional[str] = None,
-): 
+):
     """
     Decorator for test methods that handles exceptions and standardizes results.
+
+    Args:
+        func: The function to decorate (automatically provided when used without parentheses)
 
     Kwargs:
         message (str, optional): A message to include in the test result.
@@ -61,6 +71,20 @@ def wrap_test( # noqa: C901
 
             try:
                 result = test_func(*args, **kwargs)
+            except TestFailure as e:
+                # Handle the special case of TestFailure
+                tb = traceback.format_exc()
+                return TestResult(
+                    status=TestStatus.FAILED,
+                    result=e.result,
+                    test_name=test_name,
+                    suite_name=suite_name,
+                    description=test_description,
+                    message=e.message,  # Use the message from the exception
+                    exception=e,
+                    traceback=tb,
+                    _test_reference=test_func,
+                )
             except Exception as e:
                 tb = traceback.format_exc()
                 return TestResult(
@@ -95,13 +119,8 @@ def wrap_test( # noqa: C901
                         result._test_reference = test_func
                     return result
 
-                if isinstance(result, bool):
-                    status = TestStatus.PASSED if result else TestStatus.FAILED
-                else:
-                    status = TestStatus.PASSED
-
                 return TestResult(
-                    status=status,
+                    status=TestStatus.PASSED,
                     result=result,
                     test_name=test_name,
                     suite_name=suite_name,
@@ -111,6 +130,9 @@ def wrap_test( # noqa: C901
                 )
 
         return wrapper
+
+    if func is not None:
+        return decorator(func)
 
     return decorator
 
