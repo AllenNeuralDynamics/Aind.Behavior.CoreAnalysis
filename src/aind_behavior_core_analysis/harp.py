@@ -3,7 +3,7 @@ import io
 import os
 from functools import cache
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Any, Dict, List, Literal, Optional, Self, TextIO, TypeAlias, Union
+from typing import TYPE_CHECKING, Annotated, Any, Dict, List, Literal, Optional, Self, TextIO, Tuple, TypeAlias, Union
 
 import harp
 import harp.reader
@@ -99,7 +99,7 @@ class HarpDeviceParams(FilePathBaseParam):
 
 def _harp_device_reader(
     params: HarpDeviceParams,
-) -> List[HarpRegister]:
+) -> Tuple[List[HarpRegister], harp.reader.DeviceReader]:
     _yml_stream: str | os.PathLike | TextIO
     match params.device_yml_hint:
         case DeviceYmlByWhoAmI(who_am_i=who_am_i):
@@ -146,7 +146,7 @@ def _harp_device_reader(
     for name, reg_reader in reader.registers.items():
         # todo we can add custom file name interpolation here
         data_streams.append(HarpRegister.from_register_reader(name, reg_reader, _DEFAULT_HARP_READER_PARAMS))
-    return data_streams
+    return (data_streams, reader)
 
 
 def _make_device_reader(yml_stream: str | os.PathLike | TextIO, params: HarpDeviceParams) -> harp.reader.DeviceReader:
@@ -206,7 +206,17 @@ def fetch_who_am_i_list(
 
 class HarpDevice(DataStreamCollectionBase[HarpRegister, HarpDeviceParams]):
     make_params = HarpDeviceParams
+    _device_reader: Optional[harp.reader.DeviceReader]
 
-    @staticmethod
-    def _reader(params: HarpDeviceParams) -> List[HarpRegister]:
-        return _harp_device_reader(params)
+    @property
+    def device_reader(self) -> harp.reader.DeviceReader:
+        if not hasattr(self, "_device_reader"):
+            raise ValueError("Device reader is not set. Cannot read data.")
+        if self._device_reader is None:
+            raise ValueError("Device reader is not set. Cannot read data.")
+        return self._device_reader
+
+    def _reader(self, params: HarpDeviceParams) -> List[HarpRegister]:
+        regs, reader = _harp_device_reader(params)
+        self._device_reader = reader
+        return regs
