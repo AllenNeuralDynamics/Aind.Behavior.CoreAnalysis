@@ -36,11 +36,15 @@ class TestResult:
     traceback: typing.Optional[str] = None
 
 
-def wrap_test(message=None, description=None):  # noqa: C901
+def wrap_test( # noqa: C901
+    *,
+    message: typing.Optional[str | typing.Callable[[typing.Any], str]] = None,
+    description: typing.Optional[str] = None,
+): 
     """
     Decorator for test methods that handles exceptions and standardizes results.
 
-    Args:
+    Kwargs:
         message (str, optional): A message to include in the test result.
             Can include '{result}' which will be formatted with the test result.
         description (str, optional): A description of what the test does.
@@ -48,17 +52,15 @@ def wrap_test(message=None, description=None):  # noqa: C901
 
     def decorator(test_func):
         @functools.wraps(test_func)
-        def wrapper(self, datastream=None):
-            if datastream is None:
-                datastream = self.data_stream
-
+        def wrapper(*args, **kwargs):
             test_name = test_func.__name__
             # Use the provided message or the function's docstring as the description
             test_description = description or getattr(test_func, "__doc__", None)
-            suite_name = self.__class__.__name__
+            # Determine suite_name from the first argument if it's a class instance
+            suite_name = args[0].__class__.__name__ if args and hasattr(args[0], "__class__") else "NoSuite"
 
             try:
-                result = test_func(self, datastream)
+                result = test_func(*args, **kwargs)
             except Exception as e:
                 tb = traceback.format_exc()
                 return TestResult(
@@ -75,10 +77,10 @@ def wrap_test(message=None, description=None):  # noqa: C901
             else:
                 formatted_message = None
                 if message:
-                    try:
+                    if isinstance(message, str):
                         formatted_message = message.format(result=result)
-                    except (KeyError, ValueError, AttributeError):
-                        formatted_message = message
+                    elif callable(message):
+                        formatted_message = message(result)
 
                 if isinstance(result, TestResult):
                     if not result.test_name:
@@ -109,12 +111,6 @@ def wrap_test(message=None, description=None):  # noqa: C901
                 )
 
         return wrapper
-
-    # Handle case where decorator is used without arguments
-    if callable(message):
-        test_func = message
-        message = None
-        return decorator(test_func)
 
     return decorator
 

@@ -230,43 +230,44 @@ my_dataset = Dataset(
 )
 
 
-my_dataset.data_streams.walk_data_streams()
-print(my_dataset.data_streams.at("Behavior").at("HarpManipulator").load().at("WhoAmI").load().data)
-len(
-    [
-        x
-        for x in tuple(my_dataset.data_streams.walk_data_streams())
-        if ((not x.is_collection) and isinstance(x, SoftwareEvents))
-    ]
-)
+if __name__ == "__main__":
+    my_dataset.data_streams.walk_data_streams()
+    print(my_dataset.data_streams.at("Behavior").at("HarpManipulator").load().at("WhoAmI").load().data)
+    len(
+        [
+            x
+            for x in tuple(my_dataset.data_streams.walk_data_streams())
+            if ((not x.is_collection) and isinstance(x, SoftwareEvents))
+        ]
+    )
 
-exc = load_branch(my_dataset.data_streams)
+    exc = load_branch(my_dataset.data_streams)
 
-for e in exc if exc is not None else []:
-    print(f"Stream: {e[0]}")
-    print(f"Exception: {e[1]}")
-    print()
+    for e in exc if exc is not None else []:
+        print(f"Stream: {e[0]}")
+        print(f"Exception: {e[1]}")
+        print()
 
+    print(my_dataset.data_streams.at("Behavior").at("HarpBehavior").at("WhoAmI").read())
 
-print(my_dataset.data_streams.at("Behavior").at("HarpBehavior").at("WhoAmI").read())
+    print(my_dataset.data_streams.at("Behavior").at("HarpCommands").at("HarpBehavior").at("OutputSet").read())
+    print(my_dataset.data_streams.at("Behavior").at("SoftwareEvents"))
+    print(my_dataset.data_streams.at("Behavior").at("SoftwareEvents").at("DepletionVariable").read())
+    print(my_dataset.data_streams.at("Behavior").at("SoftwareEvents").at("DepletionVariable"))
 
-print(my_dataset.data_streams.at("Behavior").at("HarpCommands").at("HarpBehavior").at("OutputSet").read())
-print(my_dataset.data_streams.at("Behavior").at("SoftwareEvents"))
-print(my_dataset.data_streams.at("Behavior").at("SoftwareEvents").at("DepletionVariable").read())
-print(my_dataset.data_streams.at("Behavior").at("SoftwareEvents").at("DepletionVariable"))
+    print(my_dataset.data_streams.at("Behavior").at("OperationControl").at("IsStopped").data)
+    print(my_dataset.data_streams.at("Behavior").at("RendererSynchState").data)
 
-print(my_dataset.data_streams.at("Behavior").at("OperationControl").at("IsStopped").data)
-print(my_dataset.data_streams.at("Behavior").at("RendererSynchState").data)
+    print(my_dataset.data_streams["Behavior"]["InputSchemas"]["Session"].data)
 
-print(my_dataset.data_streams["Behavior"]["InputSchemas"]["Session"].data)
+    path = ""
+    child = my_dataset.data_streams.at("Behavior").at("SoftwareEvents").at("DepletionVariable")
+    while child.parent is not None:
+        path = f"{child.name}:{path}"
+        child = child.parent
+    print(path)
 
+    print(my_dataset.data_streams.at("Behavior").at("HarpBehavior").device_reader)
 
-path = ""
-child = my_dataset.data_streams.at("Behavior").at("SoftwareEvents").at("DepletionVariable")
-while child.parent is not None:
-    path = f"{child.name}:{path}"
-    child = child.parent
-print(path)
-
-with open("my_dataset.md", "w", encoding="UTF-8") as f:
-    f.write(print_data_stream_tree(my_dataset.data_streams))
+    with open("my_dataset.md", "w", encoding="UTF-8") as f:
+        f.write(print_data_stream_tree(my_dataset.data_streams))
