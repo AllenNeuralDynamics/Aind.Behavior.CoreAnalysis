@@ -26,16 +26,16 @@ class HarpBoardTestSuite(qc.TestSuite):
         description="Check if the harp board data stream is present and return its value",
     )
     def test_has_whoami(self) -> int:
-        whoAmI = self.harp_device["WhoAmI"]
-        if not whoAmI.has_data:
+        whoAmI_reg = self.harp_device["WhoAmI"]
+        if not whoAmI_reg.has_data:
             raise qc.FailTest(None, "WhoAmI does not have loaded data")
-        if len(whoAmI.data) == 0:
+        if len(whoAmI_reg.data) == 0:
             raise qc.FailTest(None, "WhoAmI file is empty")
         whoAmI = self._get_whoami(self.harp_device)
         if not bool(0000 <= whoAmI <= 9999):
             raise qc.FailTest(None, "WhoAmI value is not in the range 0000-9999")
         return int(whoAmI)
-
+    
     @qc.wrap_test(
         message="WhoAmI value matches.",
         description="Check if the WhoAmI value matches the device's WhoAmI",
