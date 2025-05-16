@@ -5,6 +5,7 @@ import inspect
 import traceback
 import typing
 from enum import Enum
+import rich.progress
 
 _SKIPPABLE = True
 
@@ -30,7 +31,7 @@ class ITest(typing.Protocol):
 
 
 class FailTest(Exception):
-    def __init__(self, result: typing.Any, message: str):
+    def __init__(self, result: typing.Optional[typing.Any] = None, message: typing.Optional[str] = None):
         self.result = result
         self.message = message
         super().__init__(message)
@@ -42,7 +43,7 @@ class SkipTest(Exception):
         super().__init__(message)
 
     def fail(self):
-        raise FailTest(None, self.message) if self.message else None
+        return FailTest(result=None, message=self.message)
 
 
 @dataclasses.dataclass
@@ -171,7 +172,9 @@ def wrap_test(  # noqa: C901
                     message=formatted_message,
                     _test_reference=test_func,
                 )
-
+        
+        # Mark the wrapper function as a test
+        setattr(wrapper, '_tag_for_test', True)
         return wrapper
 
     if func is not None:
@@ -181,9 +184,12 @@ def wrap_test(  # noqa: C901
 
 
 class TestSuite(abc.ABC):
+    def __init__(self, name: str, *args, **kwargs):
+        super().__init__()
+    
     def get_tests(self) -> typing.Generator[typing.Callable, None, None]:
         for name, method in inspect.getmembers(self, predicate=inspect.ismethod):
-            if name.startswith("test_"):
+            if getattr(method, '_tag_for_test', None) is not None:
                 yield method
 
     def run_all(self) -> typing.Generator[TestResult, None, None]:
@@ -192,32 +198,104 @@ class TestSuite(abc.ABC):
 
 
 class TestRunner:
-    def __init__(self):
-        self.suites: list[TestSuite] = []
+    def __init__(self, suites: typing.Optional[typing.List[TestSuite]] = None):
+        self.suites = suites if suites is not None else []
+        self._results: typing.Optional[typing.List[TestResult]] = None
 
     def add_suite(self, suite: TestSuite) -> "TestRunner":
         self.suites.append(suite)
         return self
 
-    def run_all(self) -> typing.List[TestResult]:
-        results = []
-        for suite in self.suites:
-            results.extend(suite.run_all())
-        return results
-
-    def generate_report(self, results: typing.List[TestResult]) -> typing.Dict:
+    def _calculate_statistics(self, results: typing.List[TestResult]) -> typing.Dict:
         total = len(results)
-        passed = sum(1 for r in results if r.status == TestStatus.PASSED)
-        failed = sum(1 for r in results if r.status == TestStatus.FAILED)
-        errors = sum(1 for r in results if r.status == TestStatus.ERROR)
-        skipped = sum(1 for r in results if r.status == TestStatus.SKIPPED)
-
+        stats = {status: sum(1 for r in results if r.status == status) for status in TestStatus}
+        
         return {
             "total": total,
-            "passed": passed,
-            "failed": failed,
-            "errors": errors,
-            "skipped": skipped,
-            "pass_rate": (passed / total) if total > 0 else 0,
-            "results": results,
+            "passed": stats[TestStatus.PASSED],
+            "failed": stats[TestStatus.FAILED],
+            "errors": stats[TestStatus.ERROR],
+            "skipped": stats[TestStatus.SKIPPED],
+            "pass_rate": (stats[TestStatus.PASSED] / total) if total > 0 else 0
         }
+
+    def _render_status_bar(self, stats: typing.Dict, bar_width: int = 20) -> str:
+        total = stats["total"]
+        if total == 0:
+            return ""
+            
+        status_bar = ""
+        if stats["passed"]: 
+            status_bar += f"[green]{'█' * int(bar_width * stats['passed']/total)}[/green]"
+        if stats["failed"]:
+            status_bar += f"[red]{'█' * int(bar_width * stats['failed']/total)}[/red]"
+        if stats["errors"]:
+            status_bar += f"[bright_red]{'█' * int(bar_width * stats['errors']/total)}[/bright_red]"
+        if stats["skipped"]:
+            status_bar += f"[yellow]{'█' * int(bar_width * stats['skipped']/total)}[/yellow]"
+            
+        return status_bar
+
+    def _get_status_summary(self, stats: typing.Dict) -> str:
+        return f"P:{stats['passed']} F:{stats['failed']} E:{stats['errors']} S:{stats['skipped']}"
+    
+    def run_all_with_progress(self) -> typing.List[TestResult]:
+        """Run all tests in all suites with a rich progress display and aligned columns."""
+        
+        suite_tests = [(suite, list(suite.get_tests())) for suite in self.suites]
+        test_count = sum(len(tests) for _, tests in suite_tests)
+        
+        suite_name_width = max(len(suite.__class__.__name__) for suite, _ in suite_tests) if suite_tests else 10
+        test_name_width = 20 # To render the test name during progress
+        bar_width = 20
+        
+        progress_format = [
+            f"[progress.description]{{task.description:<{suite_name_width + test_name_width + 5}}}",
+            rich.progress.BarColumn(),
+            "[progress.percentage]{task.percentage:>3.0f}%",
+            "•",
+            rich.progress.TimeRemainingColumn(),
+        ]
+        
+        with rich.progress.Progress(*progress_format) as progress:
+            total_task = progress.add_task("[bold green]Total Progress".ljust(suite_name_width + test_name_width + 5), total=test_count)
+            
+            all_results = []
+            
+            for suite, tests in suite_tests:
+                suite_name = suite.__class__.__name__ # TODO replace wiht some "name" property
+                suite_task = progress.add_task(f"[cyan]{suite_name}".ljust(suite_name_width + 5), total=len(tests))
+                suite_results = []
+                
+                for test in tests:
+                    test_name = test.__name__
+                    test_desc = f"[cyan]{suite_name:<{suite_name_width}} • {test_name:<{test_name_width}}"
+                    progress.update(suite_task, description=test_desc)
+                    
+                    result = test()
+                    
+                    suite_results.append(result)
+                    
+                    progress.advance(total_task)
+                    progress.advance(suite_task)
+                
+                if tests:
+                    stats = self._calculate_statistics(suite_results)
+                    status_bar = self._render_status_bar(stats, bar_width)
+                    summary = self._get_status_summary(stats)
+                    
+                    summary_line = f"[cyan]{suite_name:<{suite_name_width}} | {status_bar} | {summary}"
+                    progress.update(suite_task, description=summary_line)
+            
+                all_results.extend(suite_results)
+                
+            if test_count > 0:
+                total_stats = self._calculate_statistics(all_results)
+                total_status_bar = self._render_status_bar(total_stats, bar_width+1)
+                total_summary = self._get_status_summary(total_stats)
+                
+                total_line = f"[bold green]Total{' ':{suite_name_width-5}} | {total_status_bar} | {total_summary}"
+                progress.update(total_task, description=total_line)
+        
+        self._results = all_results
+        return all_results
