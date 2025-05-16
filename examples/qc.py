@@ -5,6 +5,7 @@ from example import my_dataset
 from aind_behavior_core_analysis.harp import HarpDevice
 from aind_behavior_core_analysis.qc import _base as qc
 from aind_behavior_core_analysis.utils import load_branch
+import numpy as np
 
 qc.set_skippable_ctx(True)
 
@@ -59,4 +60,34 @@ class HarpBoardTestSuite(qc.TestSuite):
             raise qc.SkipTest("No harp device commands provided")
 
 
-[print(test) for test in HarpBoardTestSuite(harp_behavior).run_all()]
+
+class BehaviorBoardTestSuite(qc.TestSuite):
+
+    WHOAMI = 1216
+
+    def __init__(self, harp_device: HarpDevice):
+        self.harp_device = harp_device
+
+    @qc.wrap_test
+    def test_whoami(self) -> None:
+        whoAmI = self.harp_device["WhoAmI"].data.WhoAmI.iloc[-1]
+        if whoAmI != self.WHOAMI:
+            raise qc.FailTest(None, f"WhoAmI value is not {self.WHOAMI}")
+
+    @qc.wrap_test
+    def determine_analog_data_frequency(self) -> float:
+        analog_data = self.harp_device["AnalogData"].data
+        adc_event_enabled = self.harp_device["EventEnable"].data.AnalogData.iloc[-1]
+
+        if not adc_event_enabled:
+            return 0.0
+        else:
+            events = analog_data[analog_data["MessageType"] == "EVENT"]
+            return 1.0 / np.mean(np.diff(events.index.values))
+
+
+runner = qc.TestRunner()
+runner.add_suite(BehaviorBoardTestSuite(harp_behavior))
+runner.add_suite(HarpBoardTestSuite(harp_behavior))
+
+runner.run_all_with_progress()
