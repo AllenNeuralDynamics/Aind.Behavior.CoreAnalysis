@@ -271,16 +271,20 @@ class TestRunner:
         return self
 
     def _render_status_bar(self, stats: TestStatistics, bar_width: int = 20) -> str:
-        """Render a colored status bar based on test statistics."""
         total = stats.total
         if total == 0:
             return ""
 
         status_bar = ""
+        _t = 0.0
+        _t_int = 0
         for status in TestStatus:
             if stats[status]:
                 color = STATUS_COLOR[status]
-                status_bar += f"[{color}]{'█' * int(bar_width * stats[status] / total)}[/{color}]"
+                _bar_width = int(bar_width * (stats[status] / total))
+                _t_int += _bar_width
+                status_bar += f"[{color}]{'█' * _bar_width}[/{color}]"
+        status_bar += f"[default]{'█' * (bar_width - _t_int)}[/default]"
 
         return status_bar
 
@@ -303,7 +307,7 @@ class TestRunner:
             rich.progress.BarColumn(),
             "[progress.percentage]{task.percentage:>3.0f}%",
             "•",
-            rich.progress.TimeRemainingColumn(),
+            rich.progress.TimeElapsedColumn(),
         ]
 
         with rich.progress.Progress(*progress_format) as progress:
@@ -345,9 +349,8 @@ class TestRunner:
                 total_stats = TestStatistics.from_results(all_results)
                 total_status_bar = self._render_status_bar(total_stats, bar_width)
 
-                total_line = (
-                    f"[bold green]Total{' ':{suite_name_width - 5}} | {total_status_bar} | {stats.get_status_summary()}"
-                )
+                _title = "Total"
+                total_line = f"[bold green]{_title}{' ':{suite_name_width - len(_title)}} | {total_status_bar} | {stats.get_status_summary()}"
                 progress.update(total_task, description=total_line)
 
         self._results = all_results

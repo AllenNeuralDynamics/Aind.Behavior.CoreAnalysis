@@ -57,6 +57,14 @@ class HarpBoardTestSuite(qc.TestSuite):
     def test_mock(self):
         return "This is probably not a good idea...."
 
+    @qc.implicit_pass
+    def test_mock2(self):
+        return "This is probably not a good idea...."
+
+    @qc.implicit_pass
+    def test_mock4(self):
+        return "This is probably not a good idea...."
+
 
 class BehaviorBoardTestSuite(qc.TestSuite):
     WHOAMI = 1216
