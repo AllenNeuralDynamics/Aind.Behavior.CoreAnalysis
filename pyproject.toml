@@ -25,6 +25,7 @@ dependencies = [
     'aind_behavior_services',
     'pyyaml',
     'requests',
+    'rich',
 ]
 
 [project.urls]
