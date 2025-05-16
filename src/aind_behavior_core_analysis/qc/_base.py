@@ -4,13 +4,19 @@ import inspect
 import traceback
 import typing
 from enum import Enum
-from typing import Annotated, Any, Dict, Generator, List, Optional, Protocol, TypeVar, get_args, get_origin
+from typing import Any, Generator, List, Optional, Protocol, TypeVar
 
 import rich.progress
 from rich.console import Console
 from rich.syntax import Syntax
 
 _SKIPPABLE = True
+_ALLOW_NULL_AS_PASS = False
+
+
+def set_allow_null_as_pass(value: bool):
+    global _ALLOW_NULL_AS_PASS
+    _ALLOW_NULL_AS_PASS = value
 
 
 def set_skippable_ctx(value: bool):
@@ -34,53 +40,19 @@ STATUS_COLOR = {
 
 
 class ITest(Protocol):
-    def __call__(self) -> "TestResult":
-        pass
+    def __call__(self) -> "TestResult": ...
+
+    @property
+    def __name__(self) -> str: ...
+
+
+TResult = TypeVar("TResult", bound=Any)
 
 
 @dataclasses.dataclass
-class Annotation:
-    message: Optional[str] = None
-    context: Optional[Any] = None
-
-
-class FailTest(Exception):
-    @typing.overload
-    def __init__(self, result: Optional[Any] = None) -> None: ...
-
-    @typing.overload
-    def __init__(self, result: Optional[Any] = None, annotation: str = None) -> None: ...
-
-    @typing.overload
-    def __init__(self, result: Optional[Any] = None, annotation: Annotation = None) -> None: ...
-
-    def __init__(self, result: Optional[Any] = None, annotation: Optional[str | Annotation] = None):
-        if isinstance(annotation, str):
-            annotation = Annotation(message=annotation)
-        self.result, self.annotation = TestSuite._unwrap_annotated(result)
-        self.annotation = annotation or self.annotation
-        super().__init__(self.annotation.message if self.annotation else None)
-
-
-class SkipTest(Exception):
-    @typing.overload
-    def __init__(self) -> None: ...
-    @typing.overload
-    def __init__(self, annotation: str = None) -> None: ...
-    @typing.overload
-    def __init__(self, annotation: Annotation = None) -> None: ...
-
-    def __init__(self, annotation: Optional[str | Annotation] = None):
-        if isinstance(annotation, str):
-            annotation = Annotation(message=annotation)
-        self.annotation = annotation
-        super().__init__(self.annotation.message if self.annotation else None)
-
-
-@dataclasses.dataclass
-class TestResult:
+class TestResult(typing.Generic[TResult]):
     status: TestStatus
-    result: Any
+    result: TResult
     test_name: str
     suite_name: str
     _test_reference: Optional[ITest] = dataclasses.field(default=None, repr=False)
@@ -92,62 +64,119 @@ class TestResult:
 
 
 class TestSuite(abc.ABC):
-    def get_tests(self) -> Generator[typing.Callable, None, None]:
+    def get_tests(self) -> Generator[ITest, None, None]:
         """Find all methods starting with 'test'."""
         for name, method in inspect.getmembers(self, predicate=inspect.ismethod):
             if name.startswith("test"):
                 yield method
 
-    _T = TypeVar("_T")
+    @typing.overload
+    def pass_test(self) -> TestResult: ...
 
-    @staticmethod
-    def _unwrap_annotated(result: _T) -> tuple[_T, Optional[Annotation]]:
-        extra_data = None
-        original_result = result
-        if get_origin(result) is Annotated:
-            args = get_args(result)
-            if args and len(args) >= 2:
-                original_result = args[0]
-                for arg in args[1:]:
-                    if isinstance(arg, Annotation):
-                        extra_data = arg
-                        break
+    @typing.overload
+    def pass_test(self, result: Any) -> TestResult: ...
 
-        return original_result, extra_data
+    @typing.overload
+    def pass_test(self, result: Any, message: str) -> TestResult: ...
 
-    def run_test(self, test_method: typing.Callable) -> TestResult:
+    @typing.overload
+    def pass_test(self, result: Any, *, context: Any) -> TestResult: ...
+
+    @typing.overload
+    def pass_test(self, result: Any, message: str, *, context: Any) -> TestResult: ...
+
+    def pass_test(
+        self, result: Any = None, message: Optional[str] = None, *, context: Optional[Any] = None
+    ) -> TestResult:
+        if (f := inspect.currentframe()) is None:
+            raise RuntimeError("Unable to retrieve the calling frame.")
+        if (frame := f.f_back) is None:
+            raise RuntimeError("Unable to retrieve the calling frame.")
+        calling_func_name = frame.f_code.co_name
+
+        return TestResult(
+            status=TestStatus.PASSED,
+            result=result,
+            test_name=calling_func_name,
+            suite_name=self.__class__.__name__,
+            message=message,
+            context=context,
+            description=getattr(frame.f_globals.get(calling_func_name), "__doc__", None),
+        )
+
+    # Fail Test Method with Overloads
+    @typing.overload
+    def fail_test(self) -> TestResult: ...
+
+    @typing.overload
+    def fail_test(self, result: Any) -> TestResult: ...
+
+    @typing.overload
+    def fail_test(self, result: Any, message: str) -> TestResult: ...
+
+    @typing.overload
+    def fail_test(self, result: Any, message: str, *, context: Any) -> TestResult: ...
+
+    def fail_test(
+        self, result: Optional[Any] = None, message: Optional[str] = None, *, context: Optional[Any] = None
+    ) -> TestResult:
+        if (f := inspect.currentframe()) is None:
+            raise RuntimeError("Unable to retrieve the calling frame.")
+        if (frame := f.f_back) is None:
+            raise RuntimeError("Unable to retrieve the calling frame.")
+        calling_func_name = frame.f_code.co_name
+
+        return TestResult(
+            status=TestStatus.FAILED,
+            result=result,
+            test_name=calling_func_name,
+            suite_name=self.__class__.__name__,
+            message=message,
+            context=context,
+            description=getattr(frame.f_globals.get(calling_func_name), "__doc__", None),
+        )
+
+    # Skip Test Method with Overloads
+    @typing.overload
+    def skip_test(self) -> TestResult: ...
+
+    @typing.overload
+    def skip_test(self, message: str) -> TestResult: ...
+
+    @typing.overload
+    def skip_test(self, message: str, *, context: Any) -> TestResult: ...
+
+    def skip_test(self, message: Optional[str] = None, *, context: Optional[Any] = None) -> TestResult:
+        if (f := inspect.currentframe()) is None:
+            raise RuntimeError("Unable to retrieve the calling frame.")
+        if (frame := f.f_back) is None:
+            raise RuntimeError("Unable to retrieve the calling frame.")
+        calling_func_name = frame.f_code.co_name
+        return TestResult(
+            status=TestStatus.SKIPPED if _SKIPPABLE else TestStatus.FAILED,
+            result=None,
+            test_name=calling_func_name,
+            suite_name=self.__class__.__name__,
+            message=message,
+            context=context,
+            description=getattr(frame.f_globals.get(calling_func_name), "__doc__", None),
+        )
+
+    def run_test(self, test_method: ITest) -> TestResult:
         test_name = test_method.__name__
         suite_name = self.__class__.__name__
         description = getattr(test_method, "__doc__", None)
 
         try:
             result = test_method()
-        except SkipTest as e:
-            tb = traceback.format_exc()
-            return TestResult(
-                status=TestStatus.SKIPPED if _SKIPPABLE else TestStatus.FAILED,
-                result=None,
-                test_name=test_name,
-                suite_name=suite_name,
-                description=description,
-                message=e.annotation.message,
-                exception=e,
-                traceback=tb,
-                _test_reference=test_method,
-            )
-        except FailTest as e:
-            tb = traceback.format_exc()
-            return TestResult(
-                status=TestStatus.FAILED,
-                result=e.result,
-                test_name=test_name,
-                suite_name=suite_name,
-                description=description,
-                message=e.annotation.message,
-                exception=e,
-                traceback=tb,
-                _test_reference=test_method,
-            )
+            if result is None and _ALLOW_NULL_AS_PASS:
+                return self.pass_test(None, "Test passed with <null> result implicitly.")
+            if not isinstance(result, TestResult):
+                raise TypeError(
+                    f"Test method '{test_name}' must return a TestResult instance, but got {type(result).__name__}."
+                )
+            return result
+
         except Exception as e:
             tb = traceback.format_exc()
             return TestResult(
@@ -161,43 +190,52 @@ class TestSuite(abc.ABC):
                 traceback=tb,
                 _test_reference=test_method,
             )
-        else:
-            annotation: Optional[Annotation]
-            result, annotation = self._unwrap_annotated(result)
-
-            if annotation:
-                message = annotation.message
-                context = annotation.context
-            else:
-                message = None
-                context = None
-
-            if isinstance(result, TestResult):
-                return TestResult(
-                    result.result,
-                    status=result.status,
-                    test_name=test_name,
-                    suite_name=suite_name,
-                    _test_reference=result._test_reference,
-                    description=result.description or description,
-                    message=result.message or message,
-                    context=result.context or context,
-                )
-
-            return TestResult(
-                status=TestStatus.PASSED,
-                result=result,
-                test_name=test_name,
-                suite_name=suite_name,
-                description=description,
-                message=message,
-                context=context,
-                _test_reference=test_method,
-            )
 
     def run_all(self) -> Generator[TestResult, None, None]:
         for test in self.get_tests():
             yield self.run_test(test)
+
+
+@dataclasses.dataclass
+class TestStatistics:
+    passed: int
+    failed: int
+    error: int
+    skipped: int
+
+    @property
+    def total(self) -> int:
+        return self.passed + self.failed + self.error + self.skipped
+
+    @property
+    def pass_rate(self) -> float:
+        total = self.total
+        return (self.passed / total) if total > 0 else 0.0
+
+    def get_status_summary(self) -> str:
+        return f"P:{self[TestStatus.PASSED]} F:{self[TestStatus.FAILED]} E:{self[TestStatus.ERROR]} S:{self[TestStatus.SKIPPED]}"
+
+    def __getitem__(self, item: TestStatus) -> int:
+        if item == TestStatus.PASSED:
+            return self.passed
+        elif item == TestStatus.FAILED:
+            return self.failed
+        elif item == TestStatus.ERROR:
+            return self.error
+        elif item == TestStatus.SKIPPED:
+            return self.skipped
+        else:
+            raise KeyError(f"Invalid key: {item}. Valid keys are: {list(TestStatus)}")
+
+    @classmethod
+    def from_results(cls, results: List[TestResult]) -> "TestStatistics":
+        stats = {status: sum(1 for r in results if r.status == status) for status in TestStatus}
+        return cls(
+            passed=stats[TestStatus.PASSED],
+            failed=stats[TestStatus.FAILED],
+            error=stats[TestStatus.ERROR],
+            skipped=stats[TestStatus.SKIPPED],
+        )
 
 
 class TestRunner:
@@ -209,16 +247,9 @@ class TestRunner:
         self.suites.append(suite)
         return self
 
-    def _calculate_statistics(self, results: List[TestResult]) -> Dict:
-        total = len(results)
-        stats = {status: sum(1 for r in results if r.status == status) for status in TestStatus}
-        stats["total"] = total
-        stats["pass_rate"] = (stats[TestStatus.PASSED] / total) if total > 0 else 0
-        return stats
-
-    def _render_status_bar(self, stats: Dict, bar_width: int = 20) -> str:
+    def _render_status_bar(self, stats: TestStatistics, bar_width: int = 20) -> str:
         """Render a colored status bar based on test statistics."""
-        total = stats["total"]
+        total = stats.total
         if total == 0:
             return ""
 
@@ -229,9 +260,6 @@ class TestRunner:
                 status_bar += f"[{color}]{'█' * int(bar_width * stats[status] / total)}[/{color}]"
 
         return status_bar
-
-    def _get_status_summary(self, stats: Dict) -> str:
-        return f"P:{stats[TestStatus.PASSED]} F:{stats[TestStatus.FAILED]} E:{stats[TestStatus.ERROR]} S:{stats[TestStatus.SKIPPED]}"
 
     def run_all_with_progress(self) -> List[TestResult]:
         """Run all tests in all suites with a rich progress display and aligned columns."""
@@ -280,21 +308,23 @@ class TestRunner:
                     progress.advance(suite_task)
 
                 if tests:
-                    stats = self._calculate_statistics(suite_results)
+                    stats = TestStatistics.from_results(suite_results)
                     status_bar = self._render_status_bar(stats, bar_width)
-                    summary = self._get_status_summary(stats)
 
-                    summary_line = f"[cyan]{suite_name:<{suite_name_width}} | {status_bar} | {summary}"
+                    summary_line = (
+                        f"[cyan]{suite_name:<{suite_name_width}} | {status_bar} | {stats.get_status_summary()}"
+                    )
                     progress.update(suite_task, description=summary_line)
 
                 all_results.extend(suite_results)
 
             if test_count > 0:
-                total_stats = self._calculate_statistics(all_results)
+                total_stats = TestStatistics.from_results(all_results)
                 total_status_bar = self._render_status_bar(total_stats, bar_width)
-                total_summary = self._get_status_summary(total_stats)
 
-                total_line = f"[bold green]Total{' ':{suite_name_width - 5}} | {total_status_bar} | {total_summary}"
+                total_line = (
+                    f"[bold green]Total{' ':{suite_name_width - 5}} | {total_status_bar} | {stats.get_status_summary()}"
+                )
                 progress.update(total_task, description=total_line)
 
         self._results = all_results
@@ -305,8 +335,8 @@ class TestRunner:
 
     @staticmethod
     def print_results(
-        all_results: List[TestResult], include: set[TestStatus] = (TestStatus.FAILED, TestStatus.ERROR)
-    ) -> Optional[List[TestResult]]:
+        all_results: List[TestResult], include: set[TestStatus] = set((TestStatus.FAILED, TestStatus.ERROR))
+    ):
         if all_results:
             included_tests = [r for r in all_results if r.status in include]
             if included_tests:
