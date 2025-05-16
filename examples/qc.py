@@ -3,9 +3,10 @@ import typing
 import numpy as np
 from example import my_dataset
 
-from aind_behavior_core_analysis.harp import HarpDevice
+from aind_behavior_core_analysis.harp import HarpDevice, HarpRegister
 from aind_behavior_core_analysis.qc import _base as qc
 from aind_behavior_core_analysis.utils import load_branch
+import pandas as pd
 
 qc.set_skippable_ctx(True)
 
@@ -40,13 +41,25 @@ class HarpBoardTestSuite(qc.TestSuite):
             return self.pass_test(None, "WhoAmI value matches the device's WhoAmI")
         else:
             return self.fail_test(None, "WhoAmI value does not match the device's WhoAmI")
+    
+    @staticmethod
+    def _get_last_read(harp_register: HarpRegister) -> typing.Optional[pd.DataFrame]:
+        if not harp_register.has_data:
+            raise ValueError(f"Harp register: <{harp_register.name}> does not have loaded data")
+        reads = harp_register.data[harp_register.data["MessageType"] == "READ"]
+        return reads.iloc[-1] if len(reads) > 0 else None
 
     @qc.implicit_pass
     def test_read_dump_is_complete(self):
         """
         Check if the read dump from an harp device is complete
         """
-        return True
+        regs = self.harp_device.device_reader.device.registers.keys()
+        ds = list(self.harp_device.walk_data_streams())
+        has_read_dump = [(self._get_last_read(r) is not None) for r in ds if r.name in regs]
+        is_all = all(has_read_dump)
+        missing_regs = [r.name for r in ds if r.name in regs and self._get_last_read(r) is None]
+        return self.pass_test(None, "Read dump is complete") if is_all else self.fail_test(None, "Read dump is not complete", context={"missing_registers": missing_regs})
 
     @qc.implicit_pass
     def test_request_response(self):
