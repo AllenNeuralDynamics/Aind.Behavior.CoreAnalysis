@@ -93,6 +93,10 @@ class TestSuite(abc.ABC):
             if name.startswith("test"):
                 yield method
 
+    @property
+    def description(self) -> Optional[str]:
+        return getattr(self, "__doc__", None)
+
     @typing.overload
     def pass_test(self) -> TestResult: ...
 
@@ -192,6 +196,7 @@ class TestSuite(abc.ABC):
 
         try:
             result = test_method()
+            result._test_reference = test_method
             if result is None and _ALLOW_NULL_AS_PASS:
                 return self.pass_test(None, "Test passed with <null> result implicitly.")
             if not isinstance(result, TestResult):
