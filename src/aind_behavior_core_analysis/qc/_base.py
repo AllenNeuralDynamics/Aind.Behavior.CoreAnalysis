@@ -1,5 +1,6 @@
 import abc
 import dataclasses
+import functools
 import inspect
 import traceback
 import typing
@@ -39,6 +40,7 @@ STATUS_COLOR = {
 }
 
 
+@typing.runtime_checkable
 class ITest(Protocol):
     def __call__(self) -> "TestResult": ...
 
@@ -61,6 +63,27 @@ class TestResult(typing.Generic[TResult]):
     description: Optional[str] = dataclasses.field(default=None, repr=False)
     exception: Optional[Exception] = dataclasses.field(default=None, repr=False)
     traceback: Optional[str] = dataclasses.field(default=None, repr=False)
+
+
+def implicit_pass(func):
+    @functools.wraps(func)
+    def wrapper(self, *args, **kwargs):
+        result = func(self, *args, **kwargs)
+
+        if isinstance(result, TestResult):
+            return result
+
+        # Just in case someone tries to do funny stuff
+        if isinstance(self, TestSuite):
+            return self.pass_test(result=result, message=f"Auto-converted return value: {result}")
+        else:
+            # Not in a TestSuite - can't convert properly
+            raise TypeError(
+                f"The auto_test decorator was used on '{func.__name__}' in a non-TestSuite "
+                f"class ({self.__class__.__name__}). This is not supported."
+            )
+
+    return wrapper
 
 
 class TestSuite(abc.ABC):

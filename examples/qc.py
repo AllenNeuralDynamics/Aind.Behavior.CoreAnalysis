@@ -53,6 +53,10 @@ class HarpBoardTestSuite(qc.TestSuite):
             return self.skip_test("No harp device commands provided")
         return self.pass_test()
 
+    @qc.implicit_pass
+    def test_mock(self):
+        return "This is probably not a good idea...."
+
 
 class BehaviorBoardTestSuite(qc.TestSuite):
     WHOAMI = 1216
