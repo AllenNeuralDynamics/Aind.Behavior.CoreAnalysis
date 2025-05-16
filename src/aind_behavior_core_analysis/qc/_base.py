@@ -276,7 +276,6 @@ class TestRunner:
             return ""
 
         status_bar = ""
-        _t = 0.0
         _t_int = 0
         for status in TestStatus:
             if stats[status]:
