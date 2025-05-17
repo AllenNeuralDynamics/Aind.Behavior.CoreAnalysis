@@ -42,7 +42,7 @@ STATUS_COLOR = {
 
 @typing.runtime_checkable
 class ITest(Protocol):
-    def __call__(self) -> "TestResult": ...
+    def __call__(self) -> "TestResult" | Generator["TestResult", None, None]: ...
 
     @property
     def __name__(self) -> str: ...
@@ -97,6 +97,10 @@ class TestSuite(abc.ABC):
     def description(self) -> Optional[str]:
         return getattr(self, "__doc__", None)
 
+    @property
+    def name(self) -> str:
+        return self.__class__.__name__
+
     @typing.overload
     def pass_test(self) -> TestResult: ...
 
@@ -125,7 +129,7 @@ class TestSuite(abc.ABC):
             status=TestStatus.PASSED,
             result=result,
             test_name=calling_func_name,
-            suite_name=self.__class__.__name__,
+            suite_name=self.name,
             message=message,
             context=context,
             description=getattr(frame.f_globals.get(calling_func_name), "__doc__", None),
@@ -157,7 +161,7 @@ class TestSuite(abc.ABC):
             status=TestStatus.FAILED,
             result=result,
             test_name=calling_func_name,
-            suite_name=self.__class__.__name__,
+            suite_name=self.name,
             message=message,
             context=context,
             description=getattr(frame.f_globals.get(calling_func_name), "__doc__", None),
@@ -183,36 +187,49 @@ class TestSuite(abc.ABC):
             status=TestStatus.SKIPPED if _SKIPPABLE else TestStatus.FAILED,
             result=None,
             test_name=calling_func_name,
-            suite_name=self.__class__.__name__,
+            suite_name=self.name,
             message=message,
             context=context,
             description=getattr(frame.f_globals.get(calling_func_name), "__doc__", None),
         )
 
-    def run_test(self, test_method: ITest) -> TestResult:
+    def _process_test_result(self, result: Optional[TestResult], test_method: ITest, test_name: str, description: typing.Optional[str]) -> TestResult:
+        if result is None and _ALLOW_NULL_AS_PASS:
+            return self.pass_test(None, "Test passed with <null> result implicitly.")
+            
+        if isinstance(result, TestResult):
+            return result
+            
+        return TestResult(
+            status=TestStatus.ERROR,
+            result=result,
+            test_name=test_name,
+            suite_name=self.name,
+            description=description,
+            message=f"Test method '{test_name}' must return a TestResult instance or generator, but got {type(result).__name__}.",
+            _test_reference=test_method,
+        )
+
+    def run_test(self, test_method: ITest) -> Generator[TestResult, None, None]:
         test_name = test_method.__name__
-        suite_name = self.__class__.__name__
-        description = getattr(test_method, "__doc__", None)
+        suite_name = self.name
+        test_description = getattr(test_method, "__doc__", None)
 
         try:
             result = test_method()
-            result._test_reference = test_method
-            if result is None and _ALLOW_NULL_AS_PASS:
-                return self.pass_test(None, "Test passed with <null> result implicitly.")
-            if not isinstance(result, TestResult):
-                raise TypeError(
-                    f"Test method '{test_name}' must return a TestResult instance, but got {type(result).__name__}."
-                )
-            return result
-
+            if inspect.isgenerator(result):
+                for sub_result in result:
+                    yield self._process_test_result(sub_result, test_method, test_name, test_description)
+            else:
+                yield self._process_test_result(result, test_method, test_name, test_description)
         except Exception as e:
             tb = traceback.format_exc()
-            return TestResult(
+            yield TestResult(
                 status=TestStatus.ERROR,
                 result=None,
                 test_name=test_name,
                 suite_name=suite_name,
-                description=description,
+                description=test_description,
                 message=f"Error during test execution: {str(e)}",
                 exception=e,
                 traceback=tb,
@@ -221,7 +238,7 @@ class TestSuite(abc.ABC):
 
     def run_all(self) -> Generator[TestResult, None, None]:
         for test in self.get_tests():
-            yield self.run_test(test)
+            yield from self.run_test(test)
 
 
 @dataclasses.dataclass
@@ -331,9 +348,8 @@ class TestRunner:
                     test_desc = f"[cyan]{suite_name:<{suite_name_width}} • {test_name:<{test_name_width}}"
                     progress.update(suite_task, description=test_desc)
 
-                    result = suite.run_test(test)
-
-                    suite_results.append(result)
+                    test_results = list(suite.run_test(test))
+                    suite_results.extend(test_results)
 
                     progress.advance(total_task)
                     progress.advance(suite_task)
@@ -354,7 +370,7 @@ class TestRunner:
                 total_status_bar = self._render_status_bar(total_stats, bar_width)
 
                 _title = "Total"
-                total_line = f"[bold green]{_title}{' ':{suite_name_width - len(_title)}} | {total_status_bar} | {stats.get_status_summary()}"
+                total_line = f"[bold green]{_title}{' ':{suite_name_width - len(_title)}} | {total_status_bar} | {total_stats.get_status_summary()}"
                 progress.update(total_task, description=total_line)
 
         self._results = all_results
