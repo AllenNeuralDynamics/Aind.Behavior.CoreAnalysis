@@ -101,6 +101,20 @@ class TestSuite(abc.ABC):
     def name(self) -> str:
         return self.__class__.__name__
 
+    def _get_caller_info(self):
+        """Get information about the calling function."""
+        if (f := inspect.currentframe()) is None:
+            raise RuntimeError("Unable to retrieve the calling frame.")
+        if (frame := f.f_back) is None:
+            raise RuntimeError("Unable to retrieve the calling frame.")
+        if (frame := frame.f_back) is None:  # Need to go one frame further as we're in a helper
+            raise RuntimeError("Unable to retrieve the calling frame.")
+        
+        calling_func_name = frame.f_code.co_name
+        description = getattr(frame.f_globals.get(calling_func_name), "__doc__", None)
+        
+        return calling_func_name, description
+
     @typing.overload
     def pass_test(self) -> TestResult: ...
 
@@ -119,11 +133,7 @@ class TestSuite(abc.ABC):
     def pass_test(
         self, result: Any = None, message: Optional[str] = None, *, context: Optional[Any] = None
     ) -> TestResult:
-        if (f := inspect.currentframe()) is None:
-            raise RuntimeError("Unable to retrieve the calling frame.")
-        if (frame := f.f_back) is None:
-            raise RuntimeError("Unable to retrieve the calling frame.")
-        calling_func_name = frame.f_code.co_name
+        calling_func_name, description = self._get_caller_info()
 
         return TestResult(
             status=TestStatus.PASSED,
@@ -132,7 +142,7 @@ class TestSuite(abc.ABC):
             suite_name=self.name,
             message=message,
             context=context,
-            description=getattr(frame.f_globals.get(calling_func_name), "__doc__", None),
+            description=description,
         )
 
     # Fail Test Method with Overloads
@@ -151,11 +161,7 @@ class TestSuite(abc.ABC):
     def fail_test(
         self, result: Optional[Any] = None, message: Optional[str] = None, *, context: Optional[Any] = None
     ) -> TestResult:
-        if (f := inspect.currentframe()) is None:
-            raise RuntimeError("Unable to retrieve the calling frame.")
-        if (frame := f.f_back) is None:
-            raise RuntimeError("Unable to retrieve the calling frame.")
-        calling_func_name = frame.f_code.co_name
+        calling_func_name, description = self._get_caller_info()
 
         return TestResult(
             status=TestStatus.FAILED,
@@ -164,7 +170,7 @@ class TestSuite(abc.ABC):
             suite_name=self.name,
             message=message,
             context=context,
-            description=getattr(frame.f_globals.get(calling_func_name), "__doc__", None),
+            description=description,
         )
 
     # Skip Test Method with Overloads
@@ -178,11 +184,7 @@ class TestSuite(abc.ABC):
     def skip_test(self, message: str, *, context: Any) -> TestResult: ...
 
     def skip_test(self, message: Optional[str] = None, *, context: Optional[Any] = None) -> TestResult:
-        if (f := inspect.currentframe()) is None:
-            raise RuntimeError("Unable to retrieve the calling frame.")
-        if (frame := f.f_back) is None:
-            raise RuntimeError("Unable to retrieve the calling frame.")
-        calling_func_name = frame.f_code.co_name
+        calling_func_name, description = self._get_caller_info()
         return TestResult(
             status=TestStatus.SKIPPED if _SKIPPABLE else TestStatus.FAILED,
             result=None,
@@ -190,7 +192,7 @@ class TestSuite(abc.ABC):
             suite_name=self.name,
             message=message,
             context=context,
-            description=getattr(frame.f_globals.get(calling_func_name), "__doc__", None),
+            description=description,
         )
 
     def _process_test_result(
