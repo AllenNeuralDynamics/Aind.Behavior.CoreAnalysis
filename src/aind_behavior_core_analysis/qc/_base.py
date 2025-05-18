@@ -6,6 +6,7 @@ import traceback
 import typing
 from enum import Enum
 from typing import Any, Generator, List, Optional, Protocol, TypeVar
+from contextlib import contextmanager
 
 import rich.progress
 from rich.console import Console
@@ -15,14 +16,28 @@ _SKIPPABLE = True
 _ALLOW_NULL_AS_PASS = False
 
 
-def set_allow_null_as_pass(value: bool):
+@contextmanager
+def allow_null_as_pass(value: bool = True):
+    """Context manager to control whether null results are allowed as pass."""
     global _ALLOW_NULL_AS_PASS
+    old_value = _ALLOW_NULL_AS_PASS
     _ALLOW_NULL_AS_PASS = value
+    try:
+        yield
+    finally:
+        _ALLOW_NULL_AS_PASS = old_value
 
 
-def set_skippable_ctx(value: bool):
+@contextmanager
+def skippable(value: bool = True):
+    """Context manager to control whether tests can be skipped."""
     global _SKIPPABLE
+    old_value = _SKIPPABLE
     _SKIPPABLE = value
+    try:
+        yield
+    finally:
+        _SKIPPABLE = old_value
 
 
 class TestStatus(Enum):
