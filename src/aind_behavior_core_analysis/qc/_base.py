@@ -4,7 +4,7 @@ import functools
 import inspect
 import traceback
 import typing
-from enum import Enum
+from enum import Enum, auto
 from typing import Any, Generator, List, Optional, Protocol, TypeVar
 from contextlib import contextmanager
 
@@ -41,10 +41,13 @@ def skippable(value: bool = True):
 
 
 class TestStatus(Enum):
-    PASSED = "passed"
-    FAILED = "failed"
-    ERROR = "error"
-    SKIPPED = "skipped"
+    PASSED = auto()
+    FAILED = auto()
+    ERROR = auto()
+    SKIPPED = auto()
+    
+    def __str__(self) -> str:
+        return self.name.lower()
 
 
 STATUS_COLOR = {
