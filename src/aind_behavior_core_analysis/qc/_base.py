@@ -388,25 +388,38 @@ class TestRunner:
             if included_tests:
                 console = Console()
                 console.print()
-                _include = "Including " + ", ".join([str(i.value) for i in include]) if include else ""
-                console.print(f"[bold red]{_include}[/bold red]")
+                
+                if include:
+                    console.print("Including ", end="")
+                    for i, status in enumerate(include):
+                        color = STATUS_COLOR[status]
+                        console.print(f"[{color}]{status.value}[/{color}]", end="")
+                        if i < len(include) - 1:
+                            console.print(", ", end="")
+                    console.print()
+                
                 console.print()
 
-                for idx, failure in enumerate(included_tests, 1):
-                    color = STATUS_COLOR[failure.status]
+                for idx, test_result in enumerate(included_tests, 1):
+                    color = STATUS_COLOR[test_result.status]
                     console.print(
-                        f"[bold {color}]{idx}. {failure.suite_name}.{failure.test_name} ({failure.status.value})[/bold {color}]"
+                        f"[bold {color}]{idx}. {test_result.suite_name}.{test_result.test_name} ({test_result.status.value})[/bold {color}]"
                     )
 
-                    if failure.message:
-                        console.print(f"[{color}]Message:[/{color}] {failure.message}")
+                    console.print(f"[{color}]Result:[/{color}] {test_result.result}")
 
-                    if failure.description:
-                        console.print(f"[{color}]Description:[/{color}] {failure.description}")
+                    if test_result.message:
+                        console.print(f"[{color}]Message:[/{color}] {test_result.message}")
 
-                    if failure.traceback:
+                    if test_result.description:
+                        console.print(f"[{color}]Description:[/{color}] {test_result.description}")
+
+                    if test_result.traceback:
                         console.print(f"[{color}]Traceback:[/{color}]")
-                        syntax = Syntax(failure.traceback, "pytb", theme="ansi", line_numbers=False)
+                        syntax = Syntax(test_result.traceback, "pytb", theme="ansi", line_numbers=False)
                         console.print(syntax)
+                        
+                    if test_result.context:
+                        console.print(f"[{color}]Context:[/{color}] {test_result.context}")
 
                     console.print("=" * 80)
