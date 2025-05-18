@@ -1,15 +1,8 @@
-import itertools
 import typing
-from datetime import datetime, timezone
 
 import numpy as np
 import pandas as pd
-
-# uv pip install git+https://github.com/AllenNeuralDynamics/aind-data-schema@release-v2.0.0
-from aind_data_schema.core.quality_control import QCEvaluation, QCMetric, QCStatus, QualityControl, Status
-from aind_data_schema_models.modalities import Modality
 from example import my_dataset
-from rich import print_json
 
 from aind_behavior_core_analysis.harp import HarpDevice, HarpRegister
 from aind_behavior_core_analysis.qc import _base as qc
@@ -56,6 +49,11 @@ class HarpBoardTestSuite(qc.TestSuite):
         reads = harp_register.data[harp_register.data["MessageType"] == "READ"]
         return reads.iloc[-1] if len(reads) > 0 else None
 
+    def test_yield(self):
+        """Check if the test yields"""
+        for i in range(10):
+            yield self.fail_test(f"yeidl{i}", "Yield test")
+
     @qc.implicit_pass
     def test_read_dump_is_complete(self):
         """
@@ -87,6 +85,7 @@ class BehaviorBoardTestSuite(qc.TestSuite):
         self.harp_device = harp_device
 
     def test_whoami(self):
+        """Check if the WhoAmI value is correct"""
         whoAmI = self.harp_device["WhoAmI"].data.WhoAmI.iloc[-1]
         if whoAmI != self.WHOAMI:
             return self.fail_test(None, f"WhoAmI value is not {self.WHOAMI}")
@@ -107,48 +106,3 @@ runner.add_suite(HarpBoardTestSuite(harp_behavior))
 runner.add_suite(BehaviorBoardTestSuite(harp_behavior))
 
 results = runner.run_all_with_progress()
-
-
-t = datetime(2022, 11, 22, 0, 0, 0, tzinfo=timezone.utc)
-
-s = QCStatus(evaluator="Automated", status=Status.PASS, timestamp=t)
-sp = QCStatus(evaluator="", status=Status.PENDING, timestamp=t)
-
-
-def result_to_qc_metric(result: qc.TestResult) -> typing.Optional[QCMetric]:
-    if result.status in (qc.TestStatus.PASSED, qc.TestStatus.SKIPPED):
-        status = QCStatus(evaluator="Automated", status=Status.PASS, timestamp=t)
-    elif result.status == qc.TestStatus.FAILED:
-        status = QCStatus(evaluator="Automated", status=Status.FAIL, timestamp=t)
-    else:
-        return None
-
-    return QCMetric(
-        name=result._test_reference.__name__ if result._test_reference is not None else "Unknown",
-        description=result.description,
-        value=result.result,
-        status_history=[status],
-    )
-
-
-def to_ads(results: list[qc.TestResult]) -> QualityControl:
-    groupby_test_suite = itertools.groupby(results, lambda x: x.suite_name)
-    evals = []
-    for suite_name, test_results in groupby_test_suite:
-        _test_results = list(test_results)
-        evals.append(
-            QCEvaluation(
-                modality=Modality.BEHAVIOR,
-                stage="Raw data",
-                description="todo",
-                name=suite_name,
-                created=t,
-                notes="",
-                metrics=[result_to_qc_metric(r) for r in _test_results if result_to_qc_metric(r) is not None],
-            )
-        )
-    return QualityControl(evaluations=evals)
-
-
-ads = to_ads(results)
-print_json(ads.model_dump_json(indent=2))
