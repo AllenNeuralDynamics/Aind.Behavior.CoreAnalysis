@@ -193,13 +193,19 @@ class TestSuite(abc.ABC):
             description=getattr(frame.f_globals.get(calling_func_name), "__doc__", None),
         )
 
-    def _process_test_result(self, result: Optional[TestResult], test_method: ITest, test_name: str, description: typing.Optional[str]) -> TestResult:
+    def _process_test_result(
+        self, result: Optional[TestResult], test_method: ITest, test_name: str, description: typing.Optional[str]
+    ) -> TestResult:
         if result is None and _ALLOW_NULL_AS_PASS:
-            return self.pass_test(None, "Test passed with <null> result implicitly.")
-            
+            result = self.pass_test(None, "Test passed with <null> result implicitly.")
+
         if isinstance(result, TestResult):
+            result._test_reference = test_method
+            result.test_name = test_name
+            result.suite_name = self.name
+            result.description = description
             return result
-            
+
         return TestResult(
             status=TestStatus.ERROR,
             result=result,
@@ -388,7 +394,7 @@ class TestRunner:
             if included_tests:
                 console = Console()
                 console.print()
-                
+
                 if include:
                     console.print("Including ", end="")
                     for i, status in enumerate(include):
@@ -397,7 +403,7 @@ class TestRunner:
                         if i < len(include) - 1:
                             console.print(", ", end="")
                     console.print()
-                
+
                 console.print()
 
                 for idx, test_result in enumerate(included_tests, 1):
@@ -418,7 +424,7 @@ class TestRunner:
                         console.print(f"[{color}]Traceback:[/{color}]")
                         syntax = Syntax(test_result.traceback, "pytb", theme="ansi", line_numbers=False)
                         console.print(syntax)
-                        
+
                     if test_result.context:
                         console.print(f"[{color}]Context:[/{color}] {test_result.context}")
 
