@@ -213,6 +213,14 @@ class TestSuite(abc.ABC):
             description=description,
         )
 
+    def setup(self) -> None:
+        """Run before each test method."""
+        pass
+
+    def teardown(self) -> None:
+        """Run after each test method."""
+        pass
+
     def _process_test_result(
         self, result: Optional[TestResult], test_method: ITest, test_name: str, description: typing.Optional[str]
     ) -> TestResult:
@@ -242,6 +250,7 @@ class TestSuite(abc.ABC):
         test_description = getattr(test_method, "__doc__", None)
 
         try:
+            self.setup()
             result = test_method()
             if inspect.isgenerator(result):
                 for sub_result in result:
@@ -261,6 +270,21 @@ class TestSuite(abc.ABC):
                 traceback=tb,
                 _test_reference=test_method,
             )
+        finally:
+            try:
+                self.teardown()
+            except Exception as e:
+                yield TestResult(
+                    status=TestStatus.ERROR,
+                    result=None,
+                    test_name=test_name,
+                    suite_name=suite_name,
+                    description=test_description,
+                    message=f"Error during test teardown: {str(e)}",
+                    exception=e,
+                    traceback=traceback.format_exc(),
+                    _test_reference=test_method,
+                )
 
     def run_all(self) -> Generator[TestResult, None, None]:
         for test in self.get_tests():
