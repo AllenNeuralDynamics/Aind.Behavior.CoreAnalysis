@@ -8,8 +8,6 @@ from aind_behavior_core_analysis.harp import HarpDevice, HarpRegister
 from aind_behavior_core_analysis.qc import _base as qc
 from aind_behavior_core_analysis.utils import load_branch
 
-qc.set_skippable_ctx(True)
-
 harp_behavior = my_dataset.data_streams["Behavior"]["HarpBehavior"]
 load_branch(harp_behavior)
 
@@ -42,6 +40,10 @@ class HarpBoardTestSuite(qc.TestSuite):
         else:
             return self.fail_test(None, "WhoAmI value does not match the device's WhoAmI")
 
+    def test_implicit_null(self):
+        """Check if the test is null"""
+        return
+
     @staticmethod
     def _get_last_read(harp_register: HarpRegister) -> typing.Optional[pd.DataFrame]:
         if not harp_register.has_data:
@@ -52,7 +54,7 @@ class HarpBoardTestSuite(qc.TestSuite):
     def test_yield(self):
         """Check if the test yields"""
         for i in range(10):
-            yield self.fail_test(f"yeidl{i}", "Yield test")
+            yield self.fail_test(f"yield{i}", "Yield test")
 
     @qc.implicit_pass
     def test_read_dump_is_complete(self):
@@ -101,8 +103,10 @@ class BehaviorBoardTestSuite(qc.TestSuite):
             return self.pass_test(1.0 / np.mean(np.diff(events.index.values)))
 
 
-runner = qc.TestRunner()
-runner.add_suite(HarpBoardTestSuite(harp_behavior))
-runner.add_suite(BehaviorBoardTestSuite(harp_behavior))
+with qc.allow_null_as_pass():
+    with qc.allow_skippable(False):
+        runner = qc.TestRunner()
+        runner.add_suite(HarpBoardTestSuite(harp_behavior))
+        runner.add_suite(BehaviorBoardTestSuite(harp_behavior))
 
-results = runner.run_all_with_progress()
+        results = runner.run_all_with_progress()
