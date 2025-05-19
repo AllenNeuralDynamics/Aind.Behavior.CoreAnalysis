@@ -146,9 +146,7 @@ class Suite(abc.ABC):
     @typing.overload
     def pass_test(self, result: Any, message: str, *, context: Any) -> Result: ...
 
-    def pass_test(
-        self, result: Any = None, message: Optional[str] = None, *, context: Optional[Any] = None
-    ) -> Result:
+    def pass_test(self, result: Any = None, message: Optional[str] = None, *, context: Optional[Any] = None) -> Result:
         calling_func_name, description = self._get_caller_info()
 
         return Result(
@@ -415,9 +413,7 @@ class Runner:
         return all_results
 
     @staticmethod
-    def print_results(
-        all_results: List[Result], include: set[Status] = set((Status.FAILED, Status.ERROR))
-    ):
+    def print_results(all_results: List[Result], include: set[Status] = set((Status.FAILED, Status.ERROR))):
         if all_results:
             included_tests = [r for r in all_results if r.status in include]
             if included_tests:
