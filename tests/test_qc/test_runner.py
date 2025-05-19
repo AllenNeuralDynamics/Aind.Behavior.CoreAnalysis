@@ -1,0 +1,113 @@
+import pytest
+from unittest.mock import patch
+
+from aind_behavior_core_analysis.qc._base import (
+    Suite, Status, Result, 
+    ResultsStatistics, Runner
+)
+
+
+class MockSuite(Suite):
+    """A mock test suite for testing the TestRunner."""
+    
+    def test_pass1(self):
+        return self.pass_test("pass1")
+    
+    def test_pass2(self):
+        return self.pass_test("pass2")
+    
+    def test_fail(self):
+        return self.fail_test("fail")
+    
+    def test_error(self):
+        raise ValueError("Test error")
+    
+    def test_skip(self):
+        return self.skip_test("Skip test")
+
+
+class TestResultsStatistics:
+    """Tests for the TestStatistics class."""
+    
+    def test_from_results(self):
+        """Test creating statistics from results."""
+        results = [
+            Result(Status.PASSED, "pass1", "test_pass1", "MockSuite"),
+            Result(Status.PASSED, "pass2", "test_pass2", "MockSuite"),
+            Result(Status.FAILED, "fail", "test_fail", "MockSuite"),
+            Result(Status.ERROR, None, "test_error", "MockSuite"),
+            Result(Status.SKIPPED, None, "test_skip", "MockSuite"),
+        ]
+        
+        stats = ResultsStatistics.from_results(results)
+        
+        assert stats.passed == 2
+        assert stats.failed == 1
+        assert stats.error == 1
+        assert stats.skipped == 1
+        assert stats.total == 5
+        assert stats.pass_rate == 0.4
+    
+    def test_get_item(self):
+        """Test accessing statistics by test status."""
+        stats = ResultsStatistics(
+            passed=5,
+            failed=3,
+            error=2,
+            skipped=1
+        )
+        
+        assert stats[Status.PASSED] == 5
+        assert stats[Status.FAILED] == 3
+        assert stats[Status.ERROR] == 2
+        assert stats[Status.SKIPPED] == 1
+        
+        with pytest.raises(KeyError):
+            # Invalid key should raise KeyError
+            stats["INVALID"]
+    
+    def test_status_summary(self):
+        """Test getting a status summary string."""
+        stats = ResultsStatistics(
+            passed=5,
+            failed=3,
+            error=2,
+            skipped=1
+        )
+        
+        summary = stats.get_status_summary()
+        assert summary == "P:5 F:3 E:2 S:1"
+
+
+class TestRunner:
+    """Tests for the TestRunner class."""
+    
+    def test_add_suite(self):
+        """Test adding a test suite to the runner."""
+        runner = Runner()
+        suite = MockSuite()
+        
+        result = runner.add_suite(suite)
+        assert result is runner
+        
+        assert len(runner.suites) == 1
+        assert runner.suites[0] is suite
+    
+    @patch('rich.progress.Progress')
+    def test_run_all_with_progress(self, mock_progress):
+        """Test running all tests with progress reporting."""
+        runner = Runner()
+        suite = MockSuite()
+        runner.add_suite(suite)
+        
+        with patch.object(runner, 'print_results'):
+            results = runner.run_all_with_progress()
+            
+            assert len(results) == 5
+
+            stats = ResultsStatistics.from_results(results)
+            
+            assert stats[Status.PASSED] == 2
+            assert stats[Status.FAILED] == 1
+            assert stats[Status.ERROR] == 1
+            assert stats[Status.SKIPPED] == 1

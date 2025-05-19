@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 from aind_behavior_core_analysis.qc._base import (
-    TestSuite, TestRunner, TestStatus, allow_null_as_pass, allow_skippable, TestStatistics
+    Suite, Runner, Status, allow_null_as_pass, allow_skippable, ResultsStatistics
 )
 
 
@@ -15,7 +15,7 @@ class MockHarpDevice:
         return self._data.get(key, MagicMock())
 
 
-class ExampleBoardTestSuite(TestSuite):
+class ExampleBoardTestSuite(Suite):
     def __init__(self, device):
         self.device = device
         
@@ -62,36 +62,36 @@ class TestIntegration:
         """Test a complete flow from creating suites to running tests."""
         suite = ExampleBoardTestSuite(mock_device)
         
-        runner = TestRunner()
+        runner = Runner()
         runner.add_suite(suite)
         
         with patch.object(runner, 'print_results'):
             results = runner.run_all_with_progress()
             
-            stats = TestStatistics.from_results(results)
-            assert stats[TestStatus.PASSED] == 4
-            assert stats[TestStatus.ERROR] == 1
+            stats = ResultsStatistics.from_results(results)
+            assert stats[Status.PASSED] == 4
+            assert stats[Status.ERROR] == 1
     
     def test_with_invalid_device(self, invalid_device):
         """Test with an invalid device that should cause failures."""
         suite = ExampleBoardTestSuite(invalid_device)
-        runner = TestRunner()
+        runner = Runner()
         runner.add_suite(suite)
         
         with patch.object(runner, 'print_results'):
             results = runner.run_all_with_progress()
             
-            stats = TestStatistics.from_results(results)
+            stats = ResultsStatistics.from_results(results)
             
             # With an invalid device, we should get failures
-            assert stats[TestStatus.PASSED] == 2
-            assert stats[TestStatus.FAILED] == 2
-            assert stats[TestStatus.ERROR] == 1
+            assert stats[Status.PASSED] == 2
+            assert stats[Status.FAILED] == 2
+            assert stats[Status.ERROR] == 1
     
     def test_with_context_managers(self, mock_device):
         """Test using context managers to modify test behavior."""
         suite = ExampleBoardTestSuite(mock_device)
-        runner = TestRunner()
+        runner = Runner()
         runner.add_suite(suite)
         
         # Allow None to be treated as pass
@@ -99,7 +99,7 @@ class TestIntegration:
             with patch.object(runner, 'print_results'):
                 results = runner.run_all_with_progress()
                 
-                stats = TestStatistics.from_results(results)
+                stats = ResultsStatistics.from_results(results)
             
-                assert stats[TestStatus.PASSED] == 5
-                assert stats[TestStatus.ERROR] == 0
+                assert stats[Status.PASSED] == 5
+                assert stats[Status.ERROR] == 0

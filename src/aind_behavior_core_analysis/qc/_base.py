@@ -38,7 +38,7 @@ def allow_skippable(value: bool = True):
         _allow_skippable.reset(token)
 
 
-class TestStatus(Enum):
+class Status(Enum):
     PASSED = auto()
     FAILED = auto()
     ERROR = auto()
@@ -49,16 +49,16 @@ class TestStatus(Enum):
 
 
 STATUS_COLOR = {
-    TestStatus.PASSED: "green",
-    TestStatus.FAILED: "red",
-    TestStatus.ERROR: "bright_red",
-    TestStatus.SKIPPED: "yellow",
+    Status.PASSED: "green",
+    Status.FAILED: "red",
+    Status.ERROR: "bright_red",
+    Status.SKIPPED: "yellow",
 }
 
 
 @typing.runtime_checkable
 class ITest(Protocol):
-    def __call__(self) -> "TestResult" | Generator["TestResult", None, None]: ...
+    def __call__(self) -> "Result" | Generator["Result", None, None]: ...
 
     @property
     def __name__(self) -> str: ...
@@ -68,8 +68,8 @@ TResult = TypeVar("TResult", bound=Any)
 
 
 @dataclasses.dataclass
-class TestResult(typing.Generic[TResult]):
-    status: TestStatus
+class Result(typing.Generic[TResult]):
+    status: Status
     result: TResult
     test_name: str
     suite_name: str
@@ -86,23 +86,23 @@ def implicit_pass(func):
     def wrapper(self, *args, **kwargs):
         result = func(self, *args, **kwargs)
 
-        if isinstance(result, TestResult):
+        if isinstance(result, Result):
             return result
 
         # Just in case someone tries to do funny stuff
-        if isinstance(self, TestSuite):
+        if isinstance(self, Suite):
             return self.pass_test(result=result, message=f"Auto-converted return value: {result}")
         else:
-            # Not in a TestSuite - can't convert properly
+            # Not in a Suite - can't convert properly
             raise TypeError(
-                f"The auto_test decorator was used on '{func.__name__}' in a non-TestSuite "
+                f"The auto_test decorator was used on '{func.__name__}' in a non-Suite "
                 f"class ({self.__class__.__name__}). This is not supported."
             )
 
     return wrapper
 
 
-class TestSuite(abc.ABC):
+class Suite(abc.ABC):
     def get_tests(self) -> Generator[ITest, None, None]:
         """Find all methods starting with 'test'."""
         for name, method in inspect.getmembers(self, predicate=inspect.ismethod):
@@ -132,27 +132,27 @@ class TestSuite(abc.ABC):
         return calling_func_name, description
 
     @typing.overload
-    def pass_test(self) -> TestResult: ...
+    def pass_test(self) -> Result: ...
 
     @typing.overload
-    def pass_test(self, result: Any) -> TestResult: ...
+    def pass_test(self, result: Any) -> Result: ...
 
     @typing.overload
-    def pass_test(self, result: Any, message: str) -> TestResult: ...
+    def pass_test(self, result: Any, message: str) -> Result: ...
 
     @typing.overload
-    def pass_test(self, result: Any, *, context: Any) -> TestResult: ...
+    def pass_test(self, result: Any, *, context: Any) -> Result: ...
 
     @typing.overload
-    def pass_test(self, result: Any, message: str, *, context: Any) -> TestResult: ...
+    def pass_test(self, result: Any, message: str, *, context: Any) -> Result: ...
 
     def pass_test(
         self, result: Any = None, message: Optional[str] = None, *, context: Optional[Any] = None
-    ) -> TestResult:
+    ) -> Result:
         calling_func_name, description = self._get_caller_info()
 
-        return TestResult(
-            status=TestStatus.PASSED,
+        return Result(
+            status=Status.PASSED,
             result=result,
             test_name=calling_func_name,
             suite_name=self.name,
@@ -162,24 +162,24 @@ class TestSuite(abc.ABC):
         )
 
     @typing.overload
-    def fail_test(self) -> TestResult: ...
+    def fail_test(self) -> Result: ...
 
     @typing.overload
-    def fail_test(self, result: Any) -> TestResult: ...
+    def fail_test(self, result: Any) -> Result: ...
 
     @typing.overload
-    def fail_test(self, result: Any, message: str) -> TestResult: ...
+    def fail_test(self, result: Any, message: str) -> Result: ...
 
     @typing.overload
-    def fail_test(self, result: Any, message: str, *, context: Any) -> TestResult: ...
+    def fail_test(self, result: Any, message: str, *, context: Any) -> Result: ...
 
     def fail_test(
         self, result: Optional[Any] = None, message: Optional[str] = None, *, context: Optional[Any] = None
-    ) -> TestResult:
+    ) -> Result:
         calling_func_name, description = self._get_caller_info()
 
-        return TestResult(
-            status=TestStatus.FAILED,
+        return Result(
+            status=Status.FAILED,
             result=result,
             test_name=calling_func_name,
             suite_name=self.name,
@@ -189,18 +189,18 @@ class TestSuite(abc.ABC):
         )
 
     @typing.overload
-    def skip_test(self) -> TestResult: ...
+    def skip_test(self) -> Result: ...
 
     @typing.overload
-    def skip_test(self, message: str) -> TestResult: ...
+    def skip_test(self, message: str) -> Result: ...
 
     @typing.overload
-    def skip_test(self, message: str, *, context: Any) -> TestResult: ...
+    def skip_test(self, message: str, *, context: Any) -> Result: ...
 
-    def skip_test(self, message: Optional[str] = None, *, context: Optional[Any] = None) -> TestResult:
+    def skip_test(self, message: Optional[str] = None, *, context: Optional[Any] = None) -> Result:
         calling_func_name, description = self._get_caller_info()
-        return TestResult(
-            status=TestStatus.SKIPPED if _allow_skippable.get() else TestStatus.FAILED,
+        return Result(
+            status=Status.SKIPPED if _allow_skippable.get() else Status.FAILED,
             result=None,
             test_name=calling_func_name,
             suite_name=self.name,
@@ -218,12 +218,12 @@ class TestSuite(abc.ABC):
         pass
 
     def _process_test_result(
-        self, result: Optional[TestResult], test_method: ITest, test_name: str, description: typing.Optional[str]
-    ) -> TestResult:
+        self, result: Optional[Result], test_method: ITest, test_name: str, description: typing.Optional[str]
+    ) -> Result:
         if result is None and _allow_null_as_pass_ctx.get():
             result = self.pass_test(None, "Test passed with <null> result implicitly.")
 
-        if isinstance(result, TestResult):
+        if isinstance(result, Result):
             result._test_reference = test_method
             result.test_name = test_name
             result.suite_name = self.name
@@ -231,8 +231,8 @@ class TestSuite(abc.ABC):
             return result
 
         error_msg = f"Test method '{test_name}' must return a TestResult instance or generator, but got {type(result).__name__}."
-        return TestResult(
-            status=TestStatus.ERROR,
+        return Result(
+            status=Status.ERROR,
             result=result,
             test_name=test_name,
             suite_name=self.name,
@@ -242,7 +242,7 @@ class TestSuite(abc.ABC):
             _test_reference=test_method,
         )
 
-    def run_test(self, test_method: ITest) -> Generator[TestResult, None, None]:
+    def run_test(self, test_method: ITest) -> Generator[Result, None, None]:
         test_name = test_method.__name__
         suite_name = self.name
         test_description = getattr(test_method, "__doc__", None)
@@ -257,8 +257,8 @@ class TestSuite(abc.ABC):
                 yield self._process_test_result(result, test_method, test_name, test_description)
         except Exception as e:
             tb = traceback.format_exc()
-            yield TestResult(
-                status=TestStatus.ERROR,
+            yield Result(
+                status=Status.ERROR,
                 result=None,
                 test_name=test_name,
                 suite_name=suite_name,
@@ -271,13 +271,13 @@ class TestSuite(abc.ABC):
         finally:
             self.teardown()
 
-    def run_all(self) -> Generator[TestResult, None, None]:
+    def run_all(self) -> Generator[Result, None, None]:
         for test in self.get_tests():
             yield from self.run_test(test)
 
 
 @dataclasses.dataclass
-class TestStatistics:
+class ResultsStatistics:
     passed: int
     failed: int
     error: int
@@ -293,48 +293,48 @@ class TestStatistics:
         return (self.passed / total) if total > 0 else 0.0
 
     def get_status_summary(self) -> str:
-        return f"P:{self[TestStatus.PASSED]} F:{self[TestStatus.FAILED]} E:{self[TestStatus.ERROR]} S:{self[TestStatus.SKIPPED]}"
+        return f"P:{self[Status.PASSED]} F:{self[Status.FAILED]} E:{self[Status.ERROR]} S:{self[Status.SKIPPED]}"
 
-    def __getitem__(self, item: TestStatus) -> int:
-        if item == TestStatus.PASSED:
+    def __getitem__(self, item: Status) -> int:
+        if item == Status.PASSED:
             return self.passed
-        elif item == TestStatus.FAILED:
+        elif item == Status.FAILED:
             return self.failed
-        elif item == TestStatus.ERROR:
+        elif item == Status.ERROR:
             return self.error
-        elif item == TestStatus.SKIPPED:
+        elif item == Status.SKIPPED:
             return self.skipped
         else:
-            raise KeyError(f"Invalid key: {item}. Valid keys are: {list(TestStatus)}")
+            raise KeyError(f"Invalid key: {item}. Valid keys are: {list(Status)}")
 
     @classmethod
-    def from_results(cls, results: List[TestResult]) -> "TestStatistics":
-        stats = {status: sum(1 for r in results if r.status == status) for status in TestStatus}
+    def from_results(cls, results: List[Result]) -> "ResultsStatistics":
+        stats = {status: sum(1 for r in results if r.status == status) for status in Status}
         return cls(
-            passed=stats[TestStatus.PASSED],
-            failed=stats[TestStatus.FAILED],
-            error=stats[TestStatus.ERROR],
-            skipped=stats[TestStatus.SKIPPED],
+            passed=stats[Status.PASSED],
+            failed=stats[Status.FAILED],
+            error=stats[Status.ERROR],
+            skipped=stats[Status.SKIPPED],
         )
 
 
-class TestRunner:
-    def __init__(self, suites: Optional[List[TestSuite]] = None):
+class Runner:
+    def __init__(self, suites: Optional[List[Suite]] = None):
         self.suites = suites if suites is not None else []
-        self._results: Optional[List[TestResult]] = None
+        self._results: Optional[List[Result]] = None
 
-    def add_suite(self, suite: TestSuite) -> "TestRunner":
+    def add_suite(self, suite: Suite) -> "Runner":
         self.suites.append(suite)
         return self
 
-    def _render_status_bar(self, stats: TestStatistics, bar_width: int = 20) -> str:
+    def _render_status_bar(self, stats: ResultsStatistics, bar_width: int = 20) -> str:
         total = stats.total
         if total == 0:
             return ""
 
         status_bar = ""
         _t_int = 0
-        for status in TestStatus:
+        for status in Status:
             if stats[status]:
                 color = STATUS_COLOR[status]
                 _bar_width = int(bar_width * (stats[status] / total))
@@ -344,7 +344,7 @@ class TestRunner:
 
         return status_bar
 
-    def run_all_with_progress(self) -> List[TestResult]:
+    def run_all_with_progress(self) -> List[Result]:
         """Run all tests in all suites with a rich progress display and aligned columns."""
 
         suite_tests = [(suite, list(suite.get_tests())) for suite in self.suites]
@@ -390,7 +390,7 @@ class TestRunner:
                     progress.advance(suite_task)
 
                 if tests:
-                    stats = TestStatistics.from_results(suite_results)
+                    stats = ResultsStatistics.from_results(suite_results)
                     status_bar = self._render_status_bar(stats, bar_width)
 
                     summary_line = (
@@ -401,7 +401,7 @@ class TestRunner:
                 all_results.extend(suite_results)
 
             if test_count > 0:
-                total_stats = TestStatistics.from_results(all_results)
+                total_stats = ResultsStatistics.from_results(all_results)
                 total_status_bar = self._render_status_bar(total_stats, bar_width)
 
                 _title = "Total"
@@ -416,7 +416,7 @@ class TestRunner:
 
     @staticmethod
     def print_results(
-        all_results: List[TestResult], include: set[TestStatus] = set((TestStatus.FAILED, TestStatus.ERROR))
+        all_results: List[Result], include: set[Status] = set((Status.FAILED, Status.ERROR))
     ):
         if all_results:
             included_tests = [r for r in all_results if r.status in include]

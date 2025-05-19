@@ -3,12 +3,12 @@ import inspect
 from typing import Generator
 
 from aind_behavior_core_analysis.qc._base import (
-    TestSuite, TestStatus, TestResult, TestStatistics, 
+    Suite, Status, Result, ResultsStatistics, 
     implicit_pass, allow_null_as_pass, allow_skippable
 )
 
 
-class SimpleTestSuite(TestSuite):
+class SimpleTestSuite(Suite):
     """A simple test suite for testing the TestSuite class."""
     
     def test_always_pass(self):
@@ -73,7 +73,7 @@ class TestTestSuite:
         results = list(suite.run_test(test_method))
         
         assert len(results) == 1
-        assert results[0].status == TestStatus.PASSED
+        assert results[0].status == Status.PASSED
         assert results[0].result == "pass result"
         assert results[0].message == "This test passed"
     
@@ -84,7 +84,7 @@ class TestTestSuite:
         results = list(suite.run_test(test_method))
         
         assert len(results) == 1
-        assert results[0].status == TestStatus.FAILED
+        assert results[0].status == Status.FAILED
         assert results[0].result == "fail result"
         assert results[0].message == "This test failed"
     
@@ -97,7 +97,7 @@ class TestTestSuite:
             results = list(suite.run_test(test_method))
         
         assert len(results) == 1
-        assert results[0].status == TestStatus.SKIPPED
+        assert results[0].status == Status.SKIPPED
         assert results[0].message == "This test was skipped"
         
     def test_run_test_skip_not_allowed(self):
@@ -109,7 +109,7 @@ class TestTestSuite:
             results = list(suite.run_test(test_method))
         
         assert len(results) == 1
-        assert results[0].status == TestStatus.FAILED
+        assert results[0].status == Status.FAILED
         assert results[0].message == "This test was skipped"
     
     def test_run_test_none(self):
@@ -120,7 +120,7 @@ class TestTestSuite:
         with allow_null_as_pass(value=True):
             results = list(suite.run_test(test_method))
             assert len(results) == 1
-            assert results[0].status == TestStatus.PASSED
+            assert results[0].status == Status.PASSED
         
     def test_run_test_none_not_allowed(self):
         suite = SimpleTestSuite()
@@ -128,7 +128,7 @@ class TestTestSuite:
         with allow_null_as_pass(value=False):
             results = list(suite.run_test(test_method))
             assert len(results) == 1
-            assert results[0].status == TestStatus.ERROR
+            assert results[0].status == Status.ERROR
     
     def test_run_test_yielding(self):
         """Test running a test that yields multiple results."""
@@ -137,9 +137,9 @@ class TestTestSuite:
         results = list(suite.run_test(test_method))
         
         assert len(results) == 3
-        assert results[0].status == TestStatus.PASSED
-        assert results[1].status == TestStatus.PASSED
-        assert results[2].status == TestStatus.FAILED
+        assert results[0].status == Status.PASSED
+        assert results[1].status == Status.PASSED
+        assert results[2].status == Status.FAILED
         
         assert results[0].result == "first"
         assert results[1].result == "second"
@@ -152,7 +152,7 @@ class TestTestSuite:
         results = list(suite.run_test(test_method))
         
         assert len(results) == 1
-        assert results[0].status == TestStatus.PASSED
+        assert results[0].status == Status.PASSED
         assert "auto-converted" in results[0].message.lower()
         
     def test_run_test_implicit_fail(self):
@@ -162,7 +162,7 @@ class TestTestSuite:
         results = list(suite.run_test(test_method))
         
         assert len(results) == 1
-        assert results[0].status == TestStatus.ERROR
+        assert results[0].status == Status.ERROR
         assert isinstance(results[0].exception, TypeError)
     
     def test_run_all(self):
@@ -173,10 +173,10 @@ class TestTestSuite:
         assert len(results) == 9
         
         statuses = [r.status for r in results]
-        assert statuses.count(TestStatus.PASSED) == 4
-        assert statuses.count(TestStatus.FAILED) == 2 
-        assert statuses.count(TestStatus.SKIPPED) == 1
-        assert statuses.count(TestStatus.ERROR) == 2
+        assert statuses.count(Status.PASSED) == 4
+        assert statuses.count(Status.FAILED) == 2 
+        assert statuses.count(Status.SKIPPED) == 1
+        assert statuses.count(Status.ERROR) == 2
     
     def test_run_all_with_context(self):
         """Test running all tests with context managers."""
@@ -187,14 +187,14 @@ class TestTestSuite:
                 results = list(suite.run_all())
                 
                 statuses = [r.status for r in results]
-                assert statuses.count(TestStatus.PASSED) == 5
-                assert statuses.count(TestStatus.FAILED) == 3
-                assert statuses.count(TestStatus.SKIPPED) == 0
-                assert statuses.count(TestStatus.ERROR) == 1
+                assert statuses.count(Status.PASSED) == 5
+                assert statuses.count(Status.FAILED) == 3
+                assert statuses.count(Status.SKIPPED) == 0
+                assert statuses.count(Status.ERROR) == 1
     
     def test_setup_teardown(self):
         
-        class SetupTeardownSuite(TestSuite):
+        class SetupTeardownSuite(Suite):
             def __init__(self):
                 self.setup_called = 0
                 self.teardown_called = 0
@@ -225,7 +225,7 @@ class TestTestSuite:
     def test_teardown_error(self):
         """Test that teardown errors are properly reported."""
         
-        class ErrorTeardownSuite(TestSuite):
+        class ErrorTeardownSuite(Suite):
             def test_something(self):
                 return self.pass_test()
             
