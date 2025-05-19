@@ -46,7 +46,7 @@ class TestText:
     def test_empty_file(self, temp_dir):
         """Test reading an empty file."""
         file_path = temp_dir / "empty.txt"
-        with open(file_path, "w") as f:
+        with open(file_path, "w") as _:
             pass
 
         text_stream = Text(name="test", reader_params=TextParams(path=file_path))

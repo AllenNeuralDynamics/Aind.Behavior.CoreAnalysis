@@ -119,7 +119,7 @@ class TestDataStreamCollection:
         # Adding a stream with an existing name should raise KeyError
         stream3 = SimpleDataStream(name="stream1", reader_params=SimpleParams(path=text_file))
 
-        with pytest.raises(KeyError) as e:
+        with pytest.raises(KeyError):
             collection.add_stream(stream3)
 
     def test_remove_stream(self, text_file):

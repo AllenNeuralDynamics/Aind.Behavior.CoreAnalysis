@@ -2,8 +2,6 @@ import pandas as pd
 
 from aind_behavior_core_analysis.contract.csv import Csv, CsvParams
 
-from .conftest import make_mock_data
-
 
 class TestCsv:
     """Tests for the Csv class."""
@@ -12,7 +10,6 @@ class TestCsv:
         """Test reading a CSV file."""
         csv_stream = Csv(name="test", reader_params=CsvParams(path=csv_file))
 
-        d = make_mock_data(5)
         data = csv_stream.read()
         assert isinstance(data, pd.DataFrame)
         assert list(data.columns) == ["name", "value", "timestamp"]
