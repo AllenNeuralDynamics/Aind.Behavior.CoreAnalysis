@@ -103,7 +103,7 @@ def multiple_files(temp_dir):
     return file_paths
 
 
-class TestModel(BaseModel):
+class MockModel(BaseModel):
     """A simple Pydantic model for testing."""
     name: str
     value: int
