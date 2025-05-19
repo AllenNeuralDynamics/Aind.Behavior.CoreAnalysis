@@ -61,7 +61,7 @@ class TestDataStream:
 
 
 class TestDataStreamCollection:
-    """Tests for the DataStreamCollection annonymous class."""
+    """Tests for the DataStreamCollection anonymous class."""
 
     def test_creation(self, text_file):
         """Test creating a DataStreamCollection."""
