@@ -443,7 +443,7 @@ class TestRunner:
                     console.print("Including ", end="")
                     for i, status in enumerate(include):
                         color = STATUS_COLOR[status]
-                        console.print(f"[{color}]{status.value}[/{color}]", end="")
+                        console.print(f"[{color}]{status}[/{color}]", end="")
                         if i < len(include) - 1:
                             console.print(", ", end="")
                     console.print()
