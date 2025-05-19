@@ -9,7 +9,7 @@ from aind_behavior_core_analysis.qc._base import (
 )
 
 
-class SimpleTestSuite(Suite):
+class SimpleSuite(Suite):
     """A simple test suite for testing the TestSuite class."""
 
     def test_always_pass(self):
@@ -48,12 +48,12 @@ class SimpleTestSuite(Suite):
         return "Not a test"
 
 
-class TestTestSuite:
+class TestSuite:
     """Tests for the TestSuite class."""
 
     def test_get_tests(self):
         """Test that get_tests returns all test methods."""
-        suite = SimpleTestSuite()
+        suite = SimpleSuite()
         tests = list(suite.get_tests())
 
         # The number of tests in the SimpleTestSuite
@@ -69,7 +69,7 @@ class TestTestSuite:
 
     def test_run_test_pass(self):
         """Test running a test that passes."""
-        suite = SimpleTestSuite()
+        suite = SimpleSuite()
         test_method = suite.test_always_pass
         results = list(suite.run_test(test_method))
 
@@ -80,7 +80,7 @@ class TestTestSuite:
 
     def test_run_test_fail(self):
         """Test running a test that fails."""
-        suite = SimpleTestSuite()
+        suite = SimpleSuite()
         test_method = suite.test_always_fail
         results = list(suite.run_test(test_method))
 
@@ -91,7 +91,7 @@ class TestTestSuite:
 
     def test_run_test_skip(self):
         """Test running a test that skips."""
-        suite = SimpleTestSuite()
+        suite = SimpleSuite()
         test_method = suite.test_always_skip
 
         with allow_skippable(True):
@@ -103,7 +103,7 @@ class TestTestSuite:
 
     def test_run_test_skip_not_allowed(self):
         """Test running a test that skips in a non-skippable context."""
-        suite = SimpleTestSuite()
+        suite = SimpleSuite()
         test_method = suite.test_always_skip
 
         with allow_skippable(False):
@@ -115,7 +115,7 @@ class TestTestSuite:
 
     def test_run_test_none(self):
         """Test running a test that returns None."""
-        suite = SimpleTestSuite()
+        suite = SimpleSuite()
         test_method = suite.test_return_none
 
         with allow_null_as_pass(value=True):
@@ -124,7 +124,7 @@ class TestTestSuite:
             assert results[0].status == Status.PASSED
 
     def test_run_test_none_not_allowed(self):
-        suite = SimpleTestSuite()
+        suite = SimpleSuite()
         test_method = suite.test_return_none
         with allow_null_as_pass(value=False):
             results = list(suite.run_test(test_method))
@@ -133,7 +133,7 @@ class TestTestSuite:
 
     def test_run_test_yielding(self):
         """Test running a test that yields multiple results."""
-        suite = SimpleTestSuite()
+        suite = SimpleSuite()
         test_method = suite.test_yielding_results
         results = list(suite.run_test(test_method))
 
@@ -148,7 +148,7 @@ class TestTestSuite:
 
     def test_run_test_with_implicit_pass(self):
         """Test running a test with the implicit_pass decorator."""
-        suite = SimpleTestSuite()
+        suite = SimpleSuite()
         test_method = suite.test_implicit_pass
         results = list(suite.run_test(test_method))
 
@@ -158,7 +158,7 @@ class TestTestSuite:
 
     def test_run_test_implicit_fail(self):
         """Test running a test that fails because it returns None."""
-        suite = SimpleTestSuite()
+        suite = SimpleSuite()
         test_method = suite.test_implicit_fail
         results = list(suite.run_test(test_method))
 
@@ -168,7 +168,7 @@ class TestTestSuite:
 
     def test_run_all(self):
         """Test running all tests in a suite."""
-        suite = SimpleTestSuite()
+        suite = SimpleSuite()
         results = list(suite.run_all())
 
         assert len(results) == 9
@@ -181,7 +181,7 @@ class TestTestSuite:
 
     def test_run_all_with_context(self):
         """Test running all tests with context managers."""
-        suite = SimpleTestSuite()
+        suite = SimpleSuite()
 
         with allow_null_as_pass():
             with allow_skippable(False):
