@@ -1,8 +1,7 @@
 import json
-import os
 import tempfile
-from pathlib import Path
 import typing
+from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -10,24 +9,24 @@ from pydantic import BaseModel
 
 from aind_behavior_core_analysis.contract._core import (
     DataStream,
-    DataStreamCollection,
     FilePathBaseParam,
 )
 
 
 class SimpleParams(FilePathBaseParam):
     """Simple params implementation for testing."""
+
     pass
 
 
 class SimpleDataStream(DataStream[str, SimpleParams]):
     """Simple DataStream implementation for testing."""
-    
+
     @staticmethod
     def _reader(params: SimpleParams) -> str:
         with open(params.path, "r") as f:
             return f.read()
-    
+
     make_params = SimpleParams
 
 
@@ -47,9 +46,9 @@ def text_file(temp_dir):
     return file_path
 
 
-def make_mock_data(n:int = 1) -> typing.List[dict[str, typing.Any]]:
+def make_mock_data(n: int = 1) -> typing.List[dict[str, typing.Any]]:
     return [{"name": f"Test {i}", "value": i, "timestamp": i * 1000} for i in range(n)]
-    
+
 
 @pytest.fixture
 def json_file(temp_dir):
@@ -85,26 +84,27 @@ def csv_file(temp_dir):
 def multiple_files(temp_dir):
     """Fixture providing multiple files with different extensions."""
     file_paths = []
-    
+
     # Create text files
     for i in range(3):
         path = temp_dir / f"file{i}.txt"
         with open(path, "w") as f:
             f.write(f"Content of file {i}")
         file_paths.append(path)
-    
+
     # Create JSON files
     for i in range(2):
         path = temp_dir / f"file{i}.json"
         with open(path, "w") as f:
             json.dump(make_mock_data(1)[0], f)
         file_paths.append(path)
-    
+
     return file_paths
 
 
 class MockModel(BaseModel):
     """A simple Pydantic model for testing."""
+
     name: str
     value: int
     timestamp: int

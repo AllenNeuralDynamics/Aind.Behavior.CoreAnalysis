@@ -1,8 +1,8 @@
 import pandas as pd
-import pytest
-from .conftest import make_mock_data
 
 from aind_behavior_core_analysis.contract.csv import Csv, CsvParams
+
+from .conftest import make_mock_data
 
 
 class TestCsv:
@@ -10,11 +10,8 @@ class TestCsv:
 
     def test_read_csv(self, csv_file):
         """Test reading a CSV file."""
-        csv_stream = Csv(
-            name="test",
-            reader_params=CsvParams(path=csv_file)
-        )
-        
+        csv_stream = Csv(name="test", reader_params=CsvParams(path=csv_file))
+
         d = make_mock_data(5)
         data = csv_stream.read()
         assert isinstance(data, pd.DataFrame)
@@ -25,24 +22,17 @@ class TestCsv:
 
     def test_load_csv(self, csv_file):
         """Test loading a CSV file."""
-        csv_stream = Csv(
-            name="test",
-            reader_params=CsvParams(path=csv_file)
-        )
-        
+        csv_stream = Csv(name="test", reader_params=CsvParams(path=csv_file))
+
         csv_stream.load()
         assert csv_stream.has_data
         assert isinstance(csv_stream.data, pd.DataFrame)
         assert list(csv_stream.data.columns) == ["name", "value", "timestamp"]
 
-
     def test_with_index(self, csv_file):
         """Test reading a CSV file with a specific index."""
-        csv_stream = Csv(
-            name="test",
-            reader_params=CsvParams(path=csv_file, index="timestamp")
-        )
-        
+        csv_stream = Csv(name="test", reader_params=CsvParams(path=csv_file, index="timestamp"))
+
         data = csv_stream.read()
         assert data.index.name == "timestamp"
         assert data.index.tolist() == [i * 1000 for i in range(5)]
@@ -54,12 +44,9 @@ class TestCsv:
         file_path = temp_dir / "empty.csv"
         df = pd.DataFrame(columns=["name", "value", "timestamp"])
         df.to_csv(file_path, index=False)
-        
-        csv_stream = Csv(
-            name="test",
-            reader_params=CsvParams(path=file_path)
-        )
-        
+
+        csv_stream = Csv(name="test", reader_params=CsvParams(path=file_path))
+
         data = csv_stream.read()
         assert isinstance(data, pd.DataFrame)
         assert list(data.columns) == ["name", "value", "timestamp"]
@@ -70,12 +57,9 @@ class TestCsv:
         file_path = temp_dir / "no_header.csv"
         with open(file_path, "w") as f:
             f.write("a,b,c\n1,2,3\n4,5,6")
-        
-        csv_stream = Csv(
-            name="test",
-            reader_params=CsvParams(path=file_path, strict_header=False)
-        )
-        
+
+        csv_stream = Csv(name="test", reader_params=CsvParams(path=file_path, strict_header=False))
+
         data = csv_stream.read()
         assert isinstance(data, pd.DataFrame)
         # With strict_header=False, the first row becomes data, not headers
