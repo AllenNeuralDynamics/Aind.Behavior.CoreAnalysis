@@ -1,43 +1,41 @@
 import abc
+import contextvars
 import dataclasses
 import functools
 import inspect
 import traceback
 import typing
+from contextlib import contextmanager
 from enum import Enum, auto
 from typing import Any, Generator, List, Optional, Protocol, TypeVar
-from contextlib import contextmanager
 
 import rich.progress
 from rich.console import Console
 from rich.syntax import Syntax
 
-_SKIPPABLE = True
-_ALLOW_NULL_AS_PASS = False
+# Define context variables with default values
+_allow_skippable = contextvars.ContextVar("allow_skippable", default=True)
+_allow_null_as_pass_ctx = contextvars.ContextVar("allow_null_as_pass", default=False)
 
 
 @contextmanager
 def allow_null_as_pass(value: bool = True):
     """Context manager to control whether null results are allowed as pass."""
-    global _ALLOW_NULL_AS_PASS
-    old_value = _ALLOW_NULL_AS_PASS
-    _ALLOW_NULL_AS_PASS = value
+    token = _allow_null_as_pass_ctx.set(value)
     try:
         yield
     finally:
-        _ALLOW_NULL_AS_PASS = old_value
+        _allow_null_as_pass_ctx.reset(token)
 
 
 @contextmanager
-def skippable(value: bool = True):
+def allow_skippable(value: bool = True):
     """Context manager to control whether tests can be skipped."""
-    global _SKIPPABLE
-    old_value = _SKIPPABLE
-    _SKIPPABLE = value
+    token = _allow_skippable.set(value)
     try:
         yield
     finally:
-        _SKIPPABLE = old_value
+        _allow_skippable.reset(token)
 
 
 class TestStatus(Enum):
@@ -45,7 +43,7 @@ class TestStatus(Enum):
     FAILED = auto()
     ERROR = auto()
     SKIPPED = auto()
-    
+
     def __str__(self) -> str:
         return self.name.lower()
 
@@ -127,10 +125,10 @@ class TestSuite(abc.ABC):
             raise RuntimeError("Unable to retrieve the calling frame.")
         if (frame := frame.f_back) is None:  # Need to go one frame further as we're in a helper
             raise RuntimeError("Unable to retrieve the calling frame.")
-        
+
         calling_func_name = frame.f_code.co_name
         description = getattr(frame.f_globals.get(calling_func_name), "__doc__", None)
-        
+
         return calling_func_name, description
 
     @typing.overload
@@ -163,7 +161,6 @@ class TestSuite(abc.ABC):
             description=description,
         )
 
-    # Fail Test Method with Overloads
     @typing.overload
     def fail_test(self) -> TestResult: ...
 
@@ -191,7 +188,6 @@ class TestSuite(abc.ABC):
             description=description,
         )
 
-    # Skip Test Method with Overloads
     @typing.overload
     def skip_test(self) -> TestResult: ...
 
@@ -204,7 +200,7 @@ class TestSuite(abc.ABC):
     def skip_test(self, message: Optional[str] = None, *, context: Optional[Any] = None) -> TestResult:
         calling_func_name, description = self._get_caller_info()
         return TestResult(
-            status=TestStatus.SKIPPED if _SKIPPABLE else TestStatus.FAILED,
+            status=TestStatus.SKIPPED if _allow_skippable.get() else TestStatus.FAILED,
             result=None,
             test_name=calling_func_name,
             suite_name=self.name,
@@ -224,7 +220,7 @@ class TestSuite(abc.ABC):
     def _process_test_result(
         self, result: Optional[TestResult], test_method: ITest, test_name: str, description: typing.Optional[str]
     ) -> TestResult:
-        if result is None and _ALLOW_NULL_AS_PASS:
+        if result is None and _allow_null_as_pass_ctx.get():
             result = self.pass_test(None, "Test passed with <null> result implicitly.")
 
         if isinstance(result, TestResult):
