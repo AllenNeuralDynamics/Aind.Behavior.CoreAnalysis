@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 
-from . import FilePathBaseParam
-from ._core import DataStream
+from ._core import DataStream, FilePathBaseParam
 
 
 @dataclass
