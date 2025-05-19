@@ -230,13 +230,15 @@ class TestSuite(abc.ABC):
             result.description = description
             return result
 
+        error_msg = f"Test method '{test_name}' must return a TestResult instance or generator, but got {type(result).__name__}."
         return TestResult(
             status=TestStatus.ERROR,
             result=result,
             test_name=test_name,
             suite_name=self.name,
             description=description,
-            message=f"Test method '{test_name}' must return a TestResult instance or generator, but got {type(result).__name__}.",
+            message=error_msg,
+            exception=TypeError(error_msg),
             _test_reference=test_method,
         )
 
@@ -267,20 +269,7 @@ class TestSuite(abc.ABC):
                 _test_reference=test_method,
             )
         finally:
-            try:
-                self.teardown()
-            except Exception as e:
-                yield TestResult(
-                    status=TestStatus.ERROR,
-                    result=None,
-                    test_name=test_name,
-                    suite_name=suite_name,
-                    description=test_description,
-                    message=f"Error during test teardown: {str(e)}",
-                    exception=e,
-                    traceback=traceback.format_exc(),
-                    _test_reference=test_method,
-                )
+            self.teardown()
 
     def run_all(self) -> Generator[TestResult, None, None]:
         for test in self.get_tests():
