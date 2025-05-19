@@ -1,12 +1,12 @@
-from ._core import (
+__version__ = "0.0.0"
+
+from .contract._core import (
     Dataset,
     DataStream,
     DataStreamCollection,
     DataStreamCollectionBase,
     FilePathBaseParam,
 )
-
-__version__ = "0.0.0"
 
 __all__ = [
     "Dataset",

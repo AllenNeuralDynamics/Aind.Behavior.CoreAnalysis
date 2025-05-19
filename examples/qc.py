@@ -4,15 +4,15 @@ import numpy as np
 import pandas as pd
 from example import my_dataset
 
-from aind_behavior_core_analysis.harp import HarpDevice, HarpRegister
+from aind_behavior_core_analysis.contract.harp import HarpDevice, HarpRegister
+from aind_behavior_core_analysis.contract.utils import load_branch
 from aind_behavior_core_analysis.qc import _base as qc
-from aind_behavior_core_analysis.utils import load_branch
 
 harp_behavior = my_dataset.data_streams["Behavior"]["HarpBehavior"]
 load_branch(harp_behavior)
 
 
-class HarpBoardTestSuite(qc.TestSuite):
+class HarpBoardTestSuite(qc.Suite):
     def __init__(self, harp_device: HarpDevice, harp_device_commands: typing.Optional[HarpDevice] = None):
         self.harp_device = harp_device
         self.harp_device_commands = harp_device_commands
@@ -80,7 +80,7 @@ class HarpBoardTestSuite(qc.TestSuite):
         return "yup"
 
 
-class BehaviorBoardTestSuite(qc.TestSuite):
+class BehaviorBoardTestSuite(qc.Suite):
     WHOAMI = 1216
 
     def __init__(self, harp_device: HarpDevice):
@@ -105,7 +105,7 @@ class BehaviorBoardTestSuite(qc.TestSuite):
 
 with qc.allow_null_as_pass():
     with qc.allow_skippable(False):
-        runner = qc.TestRunner()
+        runner = qc.Runner()
         runner.add_suite(HarpBoardTestSuite(harp_behavior))
         runner.add_suite(BehaviorBoardTestSuite(harp_behavior))
 

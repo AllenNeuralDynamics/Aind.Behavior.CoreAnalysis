@@ -5,14 +5,14 @@ from aind_behavior_services.session import AindBehaviorSessionModel
 from aind_behavior_services.task_logic import AindBehaviorTaskLogicModel
 
 from aind_behavior_core_analysis import Dataset, DataStreamCollection
-from aind_behavior_core_analysis.csv import Csv
-from aind_behavior_core_analysis.harp import (
+from aind_behavior_core_analysis.contract.csv import Csv
+from aind_behavior_core_analysis.contract.harp import (
     DeviceYmlByFile,
     HarpDevice,
 )
-from aind_behavior_core_analysis.json import PydanticModel, SoftwareEvents
-from aind_behavior_core_analysis.text import Text
-from aind_behavior_core_analysis.utils import load_branch, print_data_stream_tree
+from aind_behavior_core_analysis.contract.json import PydanticModel, SoftwareEvents
+from aind_behavior_core_analysis.contract.text import Text
+from aind_behavior_core_analysis.contract.utils import load_branch, print_data_stream_tree
 
 dataset_root = Path(r"C:\Users\bruno.cruz\Downloads\789924_2025-04-14T175107Z")
 my_dataset = Dataset(
