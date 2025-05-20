@@ -32,7 +32,6 @@ theme:
 
 plugins:
   - search
-  - include-markdown
   - mkdocstrings:
       default_handler: python
       handlers:
@@ -73,10 +72,11 @@ markdown_extensions:
 - pymdownx.extra
 - pymdownx.tabbed:
     alternate_style: true
+- pymdownx.snippets:
+    base_path: ['.']
     
 nav:
   - Home: index.md
-  - User Guide: user-guide.md
   - API Reference: 
       - Contract:
         - core: api/contract/core.md

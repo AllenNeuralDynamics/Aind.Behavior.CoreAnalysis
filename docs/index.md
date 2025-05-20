@@ -1,5 +1,3 @@
-## Welcome!
+# Project README
 
-# AIND Behavior Core Analysis
-
-{%include "../README.md" %}
+--8<-- "README.md"
