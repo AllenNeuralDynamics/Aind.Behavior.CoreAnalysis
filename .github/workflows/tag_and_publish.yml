@@ -1,4 +1,4 @@
-name: Release
+name: release
 
 on:
   workflow_dispatch:
@@ -68,18 +68,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      
       - name: Pull latest changes
         run: git pull origin ${{ env.DEFAULT_BRANCH }}
-      
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
-
-      - name: Set up Python
-        run: uv python install
 
       - name: Build
         run: uv build
