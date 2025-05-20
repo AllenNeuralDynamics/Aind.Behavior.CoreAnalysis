@@ -1,22 +1,31 @@
 name: Release
 
 on:
-  workflow_call:
-    secrets:
-      SERVICE_TOKEN:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Publish to PyPI'
         required: true
-      AIND_PYPI_TOKEN:
-        required: true
-    env:
-      IS_PUBLISH: false
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+env:
+  DEFAULT_BRANCH: main
 
 jobs:
   tag:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
     - name: Pull latest changes
       run: git pull origin ${{ env.DEFAULT_BRANCH }}
+    
     - uses: astral-sh/setup-uv@v6
       with:
         enable-cache: true
@@ -55,12 +64,16 @@ jobs:
 
   publish:
     needs: tag
-    if: ${{ env.IS_PUBLISH }} == true
+    if: ${{ github.event.inputs.publish == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
       - name: Pull latest changes
         run: git pull origin ${{ env.DEFAULT_BRANCH }}
+      
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
