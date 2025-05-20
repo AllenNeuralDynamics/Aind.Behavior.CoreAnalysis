@@ -56,7 +56,10 @@ where = ["src"]
 
 [tool.setuptools.dynamic]
 version = {attr = "aind_behavior_core_analysis.__version__"}
-readme = {file = ["README.md"]}
+readme = { file = "README.md", content-type = "text/markdown" }
+
+[tool.setuptools.package-data]
+aind_behavior_task_launcher = ["py.typed"]
 
 [tool.ruff]
 line-length = 120
