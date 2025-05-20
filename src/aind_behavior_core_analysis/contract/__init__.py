@@ -1,4 +1,4 @@
-from .base import DataStream, DataStreamCollection, Dataset, DataStreamCollectionBase
+from .base import Dataset, DataStream, DataStreamCollection, DataStreamCollectionBase
 from .utils import load_branch, print_data_stream_tree
 
 __all__ = [
