@@ -4,13 +4,25 @@ site_author: Bruno F. Cruz
 copyright: 2025, Allen Institute for Neural Dynamics
 repo_url: https://github.com/AllenNeuralDynamics/Aind.Behavior.CoreAnalysis
 repo_name: GitHub
-
 theme: 
   name: material
   palette:
-  - media: "(prefers-color-scheme)"
-    primary: white
-    accent: black
+    # Light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: white
+      accent: black
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      accent: white
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
   features:
     - content.tabs.link
     - content.code.annotate
@@ -27,7 +39,7 @@ theme:
     - navigation.tracking
     - search.suggest
     - toc.follow
-  logo: 'favicon.ico'
+  logo: 'logo.svg'
   favicon: 'favicon.ico'
 
 plugins:
