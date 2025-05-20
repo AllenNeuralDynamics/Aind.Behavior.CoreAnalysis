@@ -2,11 +2,11 @@ import typing
 
 import numpy as np
 import pandas as pd
-from example import my_dataset
+from examples.contract import my_dataset
 
 from aind_behavior_core_analysis.contract.harp import HarpDevice, HarpRegister
 from aind_behavior_core_analysis.contract.utils import load_branch
-from aind_behavior_core_analysis.qc import _base as qc
+from aind_behavior_core_analysis.qc import base as qc
 
 harp_behavior = my_dataset.data_streams["Behavior"]["HarpBehavior"]
 load_branch(harp_behavior)

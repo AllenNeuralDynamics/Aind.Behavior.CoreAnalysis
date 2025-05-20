@@ -2,7 +2,7 @@
 
 import pytest
 
-from aind_behavior_core_analysis.contract._core import DataStreamCollection
+from aind_behavior_core_analysis.contract.base import DataStreamCollection
 from aind_behavior_core_analysis.contract.utils import load_branch
 
 from .conftest import SimpleDataStream, SimpleParams

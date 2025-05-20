@@ -4,7 +4,7 @@ from aind_behavior_services.rig import AindBehaviorRigModel
 from aind_behavior_services.session import AindBehaviorSessionModel
 from aind_behavior_services.task_logic import AindBehaviorTaskLogicModel
 
-from aind_behavior_core_analysis import Dataset, DataStreamCollection
+from aind_behavior_core_analysis.contract import Dataset, DataStreamCollection
 from aind_behavior_core_analysis.contract.csv import Csv
 from aind_behavior_core_analysis.contract.harp import (
     DeviceYmlByFile,
@@ -14,7 +14,7 @@ from aind_behavior_core_analysis.contract.json import PydanticModel, SoftwareEve
 from aind_behavior_core_analysis.contract.text import Text
 from aind_behavior_core_analysis.contract.utils import load_branch, print_data_stream_tree
 
-dataset_root = Path(r"C:\Users\bruno.cruz\Downloads\789924_2025-04-14T175107Z")
+dataset_root = Path(r"path_to_data")
 my_dataset = Dataset(
     name="my_dataset",
     version="1.0",

@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any, Callable, Generic, List, Optional, Type, TypeVar
 
 from .. import _typing
-from ._core import DataStream, DataStreamCollectionBase
+from .base import DataStream, DataStreamCollectionBase
 
 _TDataStream = TypeVar("_TDataStream", bound=DataStream[Any, _typing.TReaderParams])
 

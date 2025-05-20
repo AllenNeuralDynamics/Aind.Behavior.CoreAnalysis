@@ -3,7 +3,7 @@ from typing import Optional
 
 import pandas as pd
 
-from ._core import DataStream, FilePathBaseParam
+from .base import DataStream, FilePathBaseParam
 
 
 @dataclass
