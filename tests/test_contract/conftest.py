@@ -1,6 +1,6 @@
 import json
 import tempfile
-import typing
+import typing as t
 from pathlib import Path
 
 import pandas as pd
@@ -46,7 +46,7 @@ def text_file(temp_dir):
     return file_path
 
 
-def make_mock_data(n: int = 1) -> typing.List[dict[str, typing.Any]]:
+def make_mock_data(n: int = 1) -> t.List[dict[str, t.Any]]:
     return [{"name": f"Test {i}", "value": i, "timestamp": i * 1000} for i in range(n)]
 
 
