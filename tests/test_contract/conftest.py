@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 from pydantic import BaseModel
 
-from aind_behavior_core_analysis.contract._core import (
+from aind_behavior_core_analysis.contract.base import (
     DataStream,
     FilePathBaseParam,
 )

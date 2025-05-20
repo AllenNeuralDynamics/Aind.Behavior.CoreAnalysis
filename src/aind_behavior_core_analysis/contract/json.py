@@ -8,7 +8,7 @@ import aind_behavior_services.data_types
 import pandas as pd
 import pydantic
 
-from ._core import DataStream, FilePathBaseParam
+from .base import DataStream, FilePathBaseParam
 
 
 @dataclasses.dataclass

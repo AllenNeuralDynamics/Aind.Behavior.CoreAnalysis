@@ -1,6 +1,6 @@
 from typing import List, Optional, Tuple
 
-from ._core import DataStream, DataStreamCollectionBase
+from .base import DataStream, DataStreamCollectionBase
 
 
 def load_branch(

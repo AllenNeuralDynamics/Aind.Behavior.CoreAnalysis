@@ -14,7 +14,7 @@ from pydantic import AnyHttpUrl, BaseModel, Field, dataclasses
 from typing_extensions import TypeAliasType, override
 
 from .. import _typing
-from ._core import DataStream, DataStreamCollectionBase, FilePathBaseParam
+from .base import DataStream, DataStreamCollectionBase, FilePathBaseParam
 
 HarpRegisterParams: TypeAlias = harp.reader._ReaderParams
 

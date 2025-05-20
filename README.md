@@ -28,7 +28,7 @@ pip install .
 Otherwise, you can use pip:
 
 ```
-pip install aind-behavior-core-analysis@https://github.com/AllenNeuralDynamics/Aind.Behavior.CoreAnalysis
+pip install aind-behavior-core-analysis
 ```
 
 ## Contributors

@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 import pytest
 
-from aind_behavior_core_analysis.qc._base import Result, ResultsStatistics, Runner, Status, Suite
+from aind_behavior_core_analysis.qc.base import Result, ResultsStatistics, Runner, Status, Suite
 
 
 class MockSuite(Suite):
