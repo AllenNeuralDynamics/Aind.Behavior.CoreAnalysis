@@ -1,6 +1,7 @@
 import typing as t
 
 import pandas as pd
+import semver
 
 from ..contract.harp import HarpDevice, HarpRegister
 from .base import Suite
@@ -10,7 +11,13 @@ class HarpDeviceTestSuite(Suite):
     """Test suite for the a generic Harp device. All harp devices are expected to
     pass these tests."""
 
-    def __init__(self, harp_device: HarpDevice, harp_device_commands: t.Optional[HarpDevice] = None):
+    def __init__(
+        self,
+        harp_device: HarpDevice,
+        harp_device_commands: t.Optional[HarpDevice] = None,
+        *,
+        min_core_version: t.Optional[str] = None,
+    ):
         """
         Initialize the Harp device test suite.
         Parameters
@@ -23,6 +30,7 @@ class HarpDeviceTestSuite(Suite):
 
         self.harp_device = harp_device
         self.harp_device_commands = harp_device_commands
+        self.min_core_version = min_core_version
 
     # Helper functions
     # ----------------
@@ -110,9 +118,9 @@ class HarpDeviceTestSuite(Suite):
                 context={"register_errors": reg_error},
             )
 
-    def test_monotonicity(self):
+    def test_registers_are_monotonicity(self):
         """
-        Check that the harp device registers' timestamps are monotonic
+        Check that the all the harp device registers' timestamps are monotonic
         """
         reg_errors = []
         reg: HarpRegister
@@ -137,3 +145,122 @@ class HarpDeviceTestSuite(Suite):
                 "Monotonicity check failed. Some registers are not monotonic.",
                 context={"register_errors": reg_errors},
             )
+
+    @staticmethod
+    def _try_parse_semver(version: str) -> t.Optional[semver.Version]:
+        """Try to parse a semver version string"""
+        if len(version.split(".")) < 3:
+            version += ".0"
+        try:
+            return semver.Version.parse(version)
+        except ValueError:
+            return None
+
+    def test_fw_version_matches_reader(self):
+        """Check if the firmware version of the device matches the one in the reader"""
+        reader = self.harp_device.device_reader
+
+        fw = self._try_parse_semver(reader.device.firmwareVersion)
+        device_fw = self._try_parse_semver(
+            f"{self._get_last_read(self.harp_device['FirmwareVersionHigh']).iloc[0]}.{self._get_last_read(self.harp_device['FirmwareVersionLow']).iloc[0]}"
+        )
+
+        if fw is None or device_fw is None:
+            return self.fail_test(f"Firmware version is not a valid semver version. Expected {fw} and got {device_fw}")
+        if fw > device_fw:
+            return self.fail_test(
+                False,
+                f"Expected version {fw} is greater than the device's version {device_fw}. Consider updating the device firmware.",
+            )
+        elif fw == device_fw:
+            return self.pass_test(True, f"Expected version {fw} matches the device's version {device_fw}")
+        else:
+            return self.warn_test(
+                False,
+                f"Expected version {fw} is less than the device's version {device_fw}. Consider updating interface package.",
+            )
+
+    def test_core_version(self):
+        """Check if the core version of the device matches the one provided"""
+        core = self._try_parse_semver(self.min_core_version) if self.min_core_version else None
+        device_core = self._try_parse_semver(
+            f"{self._get_last_read(self.harp_device['CoreVersionHigh']).iloc[0]}.{self._get_last_read(self.harp_device['CoreVersionLow']).iloc[0]}"
+        )
+
+        if core is None:
+            return self.skip_test("Core version not specified, skipping test.")
+        if device_core is None:
+            return self.fail_test("Core version is not a valid semver version.")
+
+        if core > device_core:
+            return self.fail_test(
+                False,
+                f"Core version {core} is greater than the device's version {device_core}. Consider updating the device firmware.",
+            )
+        elif core == device_core:
+            return self.pass_test(True, f"Core version {core} matches the device's version {device_core}")
+        else:
+            return self.warn_test(False, f"Core version {core} is less than the device's version {device_core}")
+
+
+class HarpHubTestSuite(Suite):
+    """Test suite for an hub of Harp devices. An hub is a collection of Harp devices
+    sharing the same clock generator source."""
+
+    def __init__(
+        self,
+        clock_generator_device: HarpDevice,
+        devices: t.List[HarpDevice],
+        *,
+        read_dump_jitter_threshold_s: t.Optional[float] = 0.05,
+    ):
+        self.clock_generator_device = clock_generator_device
+        self.devices = [device for device in devices if device is not clock_generator_device]
+        self.read_dump_jitter_threshold_s = read_dump_jitter_threshold_s
+
+    def test_clock_generator_reg(self):
+        """Checks if the clock generator device is actually a clock generator"""
+        if "ClockConfiguration" not in [x.name for x in self.clock_generator_device.walk_data_streams()]:
+            return self.fail_test(None, "ClockConfiguration data stream is not present")
+        clock_reg = self.clock_generator_device["ClockConfiguration"].data.iloc[-1]
+        if clock_reg["ClockGenerator"]:
+            return self.pass_test(True, "Clock generator is a clock generator")
+        else:
+            return self.fail_test(False, "Clock generator is not a clock generator")
+
+    def test_devices_are_subordinate(self):
+        """Checks if the devices are subordinate to the clock generator"""
+        for device in self.devices:
+            if "ClockConfiguration" not in [x.name for x in device.walk_data_streams()]:
+                yield self.fail_test(None, f"ClockConfiguration data stream is not present in {device.name}")
+            elif device["ClockConfiguration"].data.iloc[-1]["ClockGenerator"]:
+                yield self.fail_test(False, f"Device {device.name} is not subordinate to the clock generator")
+            else:
+                yield self.pass_test(True, f"Device {device.name} is subordinate to the clock generator")
+
+    @staticmethod
+    def _get_read_dump_time(device: HarpDevice) -> t.Optional[float]:
+        """Get the last read dump time from a device.
+        Will return None if the device does not have a requested read dump."""
+        read_dump: pd.DataFrame = device["OperationControl"].data.copy()
+        read_dump = read_dump[read_dump["MessageType"] == "WRITE"]
+        if len(read_dump) == 0:
+            return
+        return read_dump.index[-1]
+
+    def test_is_read_dump_synchronized(self):
+        """Check if the read dump from the devices arrives are roughly the same time"""
+        if self.read_dump_jitter_threshold_s is None:
+            return self.skip_test("No read dump jitter threshold provided, skipping test.")
+        clock_dump_time = self._get_read_dump_time(self.clock_generator_device)
+        for device in self.devices:
+            t_dump = self._get_read_dump_time(device)
+            if t_dump is None:
+                yield self.fail_test(None, f"Device {device.name} does not have a requested read dump")
+            elif (dt := abs(t_dump - clock_dump_time)) > self.read_dump_jitter_threshold_s:
+                yield self.fail_test(
+                    False,
+                    f"Device {device.name} read dump is not synchronized with the clock generator's. dt = {dt:.3f} s vs threshold {self.read_dump_jitter_threshold_s:.3f} s",
+                )
+            else:
+                yield self.pass_test(True, f"Device {device.name} read dump is synchronized with the clock generator's")
