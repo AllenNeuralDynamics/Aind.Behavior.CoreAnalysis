@@ -104,7 +104,7 @@ class BehaviorBoardTestSuite(qc.Suite):
 
 
 with qc.allow_null_as_pass():
-    with qc.allow_skippable(False):
+    with qc.elevated_skips(False):
         runner = qc.Runner()
         runner.add_suite(HarpBoardTestSuite(harp_behavior))
         runner.add_suite(BehaviorBoardTestSuite(harp_behavior))

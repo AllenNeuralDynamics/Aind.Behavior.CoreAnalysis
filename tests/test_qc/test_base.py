@@ -4,7 +4,7 @@ from aind_behavior_core_analysis.qc.base import (
     Status,
     Suite,
     allow_null_as_pass,
-    allow_skippable,
+    elevated_skips,
     implicit_pass,
 )
 
@@ -94,7 +94,7 @@ class TestSuite:
         suite = SimpleSuite()
         test_method = suite.test_always_skip
 
-        with allow_skippable(True):
+        with elevated_skips(True):
             results = list(suite.run_test(test_method))
 
         assert len(results) == 1
@@ -106,7 +106,7 @@ class TestSuite:
         suite = SimpleSuite()
         test_method = suite.test_always_skip
 
-        with allow_skippable(False):
+        with elevated_skips(False):
             results = list(suite.run_test(test_method))
 
         assert len(results) == 1
@@ -184,7 +184,7 @@ class TestSuite:
         suite = SimpleSuite()
 
         with allow_null_as_pass():
-            with allow_skippable(False):
+            with elevated_skips(False):
                 results = list(suite.run_all())
 
                 statuses = [r.status for r in results]
