@@ -13,7 +13,8 @@ from rich.console import Console
 from rich.syntax import Syntax
 
 # Define context variables with default values
-_allow_skippable = contextvars.ContextVar("allow_skippable", default=True)
+_elevate_skippable = contextvars.ContextVar("elevate_skippable", default=False)
+_elevate_warning = contextvars.ContextVar("elevate_warning", default=False)
 _allow_null_as_pass_ctx = contextvars.ContextVar("allow_null_as_pass", default=False)
 
 
@@ -28,13 +29,23 @@ def allow_null_as_pass(value: bool = True):
 
 
 @contextmanager
-def allow_skippable(value: bool = True):
+def elevated_skips(value: bool = True):
     """Context manager to control whether tests can be skipped."""
-    token = _allow_skippable.set(value)
+    token = _elevate_skippable.set(value)
     try:
         yield
     finally:
-        _allow_skippable.reset(token)
+        _elevate_skippable.reset(token)
+
+
+@contextmanager
+def elevated_warnings(value: bool = True):
+    """Context manager to control whether warnings are allowed."""
+    token = _elevate_warning.set(value)
+    try:
+        yield
+    finally:
+        _elevate_warning.reset(token)
 
 
 class Status(Enum):
@@ -42,6 +53,7 @@ class Status(Enum):
     FAILED = auto()
     ERROR = auto()
     SKIPPED = auto()
+    WARNING = auto()
 
     def __str__(self) -> str:
         return self.name.lower()
@@ -52,6 +64,7 @@ STATUS_COLOR = {
     Status.FAILED: "red",
     Status.ERROR: "bright_red",
     Status.SKIPPED: "yellow",
+    Status.WARNING: "dark_orange",
 }
 
 
@@ -161,6 +174,36 @@ class Suite(abc.ABC):
         )
 
     @t.overload
+    def warn_test(self) -> Result: ...
+
+    @t.overload
+    def warn_test(self, result: t.Any) -> Result: ...
+
+    @t.overload
+    def warn_test(self, result: t.Any, message: str) -> Result: ...
+
+    @t.overload
+    def warn_test(self, result: t.Any, *, context: t.Any) -> Result: ...
+
+    @t.overload
+    def warn_test(self, result: t.Any, message: str, *, context: t.Any) -> Result: ...
+
+    def warn_test(
+        self, result: t.Any = None, message: t.Optional[str] = None, *, context: t.Optional[t.Any] = None
+    ) -> Result:
+        calling_func_name, description = self._get_caller_info()
+
+        return Result(
+            status=Status.WARNING if not _elevate_warning.get() else Status.FAILED,
+            result=result,
+            test_name=calling_func_name,
+            suite_name=self.name,
+            message=message,
+            context=context,
+            description=description,
+        )
+
+    @t.overload
     def fail_test(self) -> Result: ...
 
     @t.overload
@@ -199,7 +242,7 @@ class Suite(abc.ABC):
     def skip_test(self, message: t.Optional[str] = None, *, context: t.Optional[t.Any] = None) -> Result:
         calling_func_name, description = self._get_caller_info()
         return Result(
-            status=Status.SKIPPED if _allow_skippable.get() else Status.FAILED,
+            status=Status.SKIPPED if not _elevate_skippable.get() else Status.FAILED,
             result=None,
             test_name=calling_func_name,
             suite_name=self.name,
@@ -281,10 +324,11 @@ class ResultsStatistics:
     failed: int
     error: int
     skipped: int
+    warnings: int
 
     @property
     def total(self) -> int:
-        return self.passed + self.failed + self.error + self.skipped
+        return self.passed + self.failed + self.error + self.skipped + self.warnings
 
     @property
     def pass_rate(self) -> float:
@@ -292,7 +336,7 @@ class ResultsStatistics:
         return (self.passed / total) if total > 0 else 0.0
 
     def get_status_summary(self) -> str:
-        return f"P:{self[Status.PASSED]} F:{self[Status.FAILED]} E:{self[Status.ERROR]} S:{self[Status.SKIPPED]}"
+        return f"P:{self[Status.PASSED]} F:{self[Status.FAILED]} E:{self[Status.ERROR]} S:{self[Status.SKIPPED]} W:{self[Status.WARNING]}"
 
     def __getitem__(self, item: Status) -> int:
         if item == Status.PASSED:
@@ -303,6 +347,8 @@ class ResultsStatistics:
             return self.error
         elif item == Status.SKIPPED:
             return self.skipped
+        elif item == Status.WARNING:
+            return self.warnings
         else:
             raise KeyError(f"Invalid key: {item}. Valid keys are: {list(Status)}")
 
@@ -314,6 +360,7 @@ class ResultsStatistics:
             failed=stats[Status.FAILED],
             error=stats[Status.ERROR],
             skipped=stats[Status.SKIPPED],
+            warnings=stats[Status.WARNING],
         )
 
 
@@ -414,7 +461,9 @@ class Runner:
         return all_results
 
     @staticmethod
-    def print_results(all_results: t.List[Result], include: set[Status] = set((Status.FAILED, Status.ERROR))):
+    def print_results(
+        all_results: t.List[Result], include: set[Status] = set((Status.FAILED, Status.ERROR, Status.WARNING))
+    ):
         if all_results:
             included_tests = [r for r in all_results if r.status in include]
             if included_tests:
