@@ -1,4 +1,5 @@
 from . import csv, harp
+from ._context_extensions import ContextExportableObj, ASSET_RESERVED_KEYWORD
 from .base import (
     Result,
     ResultsStatistics,
@@ -19,6 +20,8 @@ __all__ = [
     "Runner",
     "Status",
     "ResultsStatistics",
+    "ContextExportableObj",
+    "ASSET_RESERVED_KEYWORD",
     "harp",
     "csv",
 ]
