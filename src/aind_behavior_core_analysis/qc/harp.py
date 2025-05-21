@@ -70,14 +70,22 @@ class HarpDeviceTestSuite(Suite):
         """
         Check if the read dump from an harp device is complete
         """
-        regs = self.harp_device.device_reader.device.registers.keys()
+        expected_regs = self.harp_device.device_reader.device.registers.keys()
         ds = list(self.harp_device.walk_data_streams())
-        has_read_dump = [(self._get_last_read(r) is not None) for r in ds if r.name in regs]
-        missing_regs = [reg.name for reg in ds if reg.name in regs and self._get_last_read(reg) is None]
+        missing_regs = [reg_name for reg_name in expected_regs if reg_name not in [r.name for r in ds]]
+        if len(missing_regs) > 0:
+            return self.fail_test(
+                False,
+                "Read dump is not complete. Some registers are missing.",
+                context={"missing_registers": missing_regs},
+            )
+        missing_read_dump = [
+            r.name for r in ds if not (r.name in expected_regs and (self._get_last_read(r) is not None))
+        ]
         return (
             self.pass_test(True, "Read dump is complete")
-            if all(has_read_dump)
-            else self.fail_test(False, "Read dump is not complete", context={"missing_registers": missing_regs})
+            if len(missing_read_dump) == 0
+            else self.fail_test(False, "Read dump is not complete", context={"missing_registers": missing_read_dump})
         )
 
     def test_request_response(self):
@@ -165,8 +173,10 @@ class HarpDeviceTestSuite(Suite):
             f"{self._get_last_read(self.harp_device['FirmwareVersionHigh']).iloc[0]}.{self._get_last_read(self.harp_device['FirmwareVersionLow']).iloc[0]}"
         )
 
-        if fw is None or device_fw is None:
-            return self.fail_test(f"Firmware version is not a valid semver version. Expected {fw} and got {device_fw}")
+        if (fw is None) or (device_fw is None):
+            return self.fail_test(
+                None, f"Firmware version is not a valid semver version. Expected {fw} and got {device_fw}"
+            )
         if fw > device_fw:
             return self.fail_test(
                 False,
@@ -242,10 +252,13 @@ class HarpHubTestSuite(Suite):
     def _get_read_dump_time(device: HarpDevice) -> t.Optional[float]:
         """Get the last read dump time from a device.
         Will return None if the device does not have a requested read dump."""
-        read_dump: pd.DataFrame = device["OperationControl"].data.copy()
-        read_dump = read_dump[read_dump["MessageType"] == "WRITE"]
+        try:
+            read_dump: pd.DataFrame = device["OperationControl"].data.copy()
+            read_dump = read_dump[read_dump["MessageType"] == "WRITE"]
+        except KeyError:
+            return None
         if len(read_dump) == 0:
-            return
+            return None
         return read_dump.index[-1]
 
     def test_is_read_dump_synchronized(self):
