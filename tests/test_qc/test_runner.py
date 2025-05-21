@@ -17,6 +17,9 @@ class MockSuite(Suite):
     def test_fail(self):
         return self.fail_test("fail")
 
+    def test_warning(self):
+        return self.warn_test("warning")
+
     def test_error(self):
         raise ValueError("Test error")
 
@@ -34,6 +37,7 @@ class TestResultsStatistics:
             Result(Status.PASSED, "pass2", "test_pass2", "MockSuite"),
             Result(Status.FAILED, "fail", "test_fail", "MockSuite"),
             Result(Status.ERROR, None, "test_error", "MockSuite"),
+            Result(Status.WARNING, "warning", "test_warning", "MockSuite"),
             Result(Status.SKIPPED, None, "test_skip", "MockSuite"),
         ]
 
@@ -43,17 +47,19 @@ class TestResultsStatistics:
         assert stats.failed == 1
         assert stats.error == 1
         assert stats.skipped == 1
-        assert stats.total == 5
-        assert stats.pass_rate == 0.4
+        assert stats.warnings == 1
+        assert stats.total == 6
+        assert stats.pass_rate == 0.3333333333333333
 
     def test_get_item(self):
         """Test accessing statistics by test status."""
-        stats = ResultsStatistics(passed=5, failed=3, error=2, skipped=1)
+        stats = ResultsStatistics(passed=5, failed=3, error=2, skipped=1, warnings=0)
 
         assert stats[Status.PASSED] == 5
         assert stats[Status.FAILED] == 3
         assert stats[Status.ERROR] == 2
         assert stats[Status.SKIPPED] == 1
+        assert stats[Status.WARNING] == 0
 
         with pytest.raises(KeyError):
             # Invalid key should raise KeyError
@@ -61,10 +67,10 @@ class TestResultsStatistics:
 
     def test_status_summary(self):
         """Test getting a status summary string."""
-        stats = ResultsStatistics(passed=5, failed=3, error=2, skipped=1)
+        stats = ResultsStatistics(passed=5, failed=3, error=2, skipped=1, warnings=0)
 
         summary = stats.get_status_summary()
-        assert summary == "P:5 F:3 E:2 S:1"
+        assert summary == "P:5 F:3 E:2 S:1 W:0"
 
 
 class TestRunner:
@@ -91,7 +97,7 @@ class TestRunner:
         with patch.object(runner, "print_results"):
             results = runner.run_all_with_progress()
 
-            assert len(results) == 5
+            assert len(results) == 6
 
             stats = ResultsStatistics.from_results(results)
 
@@ -99,3 +105,4 @@ class TestRunner:
             assert stats[Status.FAILED] == 1
             assert stats[Status.ERROR] == 1
             assert stats[Status.SKIPPED] == 1
+            assert stats[Status.WARNING] == 1
