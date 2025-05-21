@@ -19,9 +19,12 @@ classifiers = [
 dynamic = ["version", "readme"]
 
 dependencies = [
-    'harp-python',
-    'pydantic',
     'aind_behavior_services',
+    'harp-python',
+    'matplotlib',
+    'numpy',
+    'pandas',
+    'pydantic',
     'pyyaml',
     'requests',
     'rich',
@@ -39,10 +42,10 @@ Changelog = "https://github.com/AllenNeuralDynamics/Aind.Behavior.CoreAnalysis/r
 
 
 dev = [
-    'ruff',
     'codespell',
     'pytest',
     'pytest-cov',
+    'ruff',
 ]
 
 docs = [
@@ -50,7 +53,8 @@ docs = [
     'mkdocs-material',
     'mkdocstrings[python]',
     'pymdown-extensions',
-    'ruff']
+    'ruff',
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
