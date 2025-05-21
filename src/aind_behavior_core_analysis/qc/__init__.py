@@ -1,4 +1,4 @@
-from . import harp
+from . import csv, harp
 from .base import Result, ResultsStatistics, Runner, Status, Suite, allow_null_as_pass, allow_skippable
 
 __all__ = [
@@ -10,4 +10,5 @@ __all__ = [
     "Status",
     "ResultsStatistics",
     "harp",
+    "csv",
 ]
