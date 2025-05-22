@@ -53,7 +53,9 @@ class MockHarpDevice:
             )
 
             time_index = np.linspace(0, 10, 1000)
+            np.random.seed(0)
             signal = np.sin(2 * np.pi * 5 * time_index) + 0.1 * np.random.randn(len(time_index))
+
             raw_voltage_df = pd.DataFrame(
                 {"RawVoltage": signal, "MessageType": ["EVENT"] * len(time_index)},
                 index=pd.Index(time_index, name="Seconds"),
@@ -99,7 +101,10 @@ def mock_sniff_device_bad_rate():
     """Fixture providing a mock sniff detector with inconsistent sample rate."""
     device = MockHarpDevice(whoami=1401)
 
+    np.random.seed(0)
     time_index = np.cumsum(np.random.uniform(0.0005, 0.0015, 1000))
+
+    np.random.seed(0)
     signal = np.sin(2 * np.pi * 5 * time_index) + 0.1 * np.random.randn(len(time_index))
 
     raw_voltage_df = pd.DataFrame(
