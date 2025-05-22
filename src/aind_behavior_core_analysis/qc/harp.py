@@ -301,12 +301,12 @@ class HarpDeviceTypeTestSuite(Suite, abc.ABC):
     def test_whoami(self):
         """Check if the WhoAmI value is correct"""
         try:
-            whoAmI = self.harp_device["WhoAmI"].data["WhoAmI"].iloc[-1]
+            who_am_i = self.harp_device["WhoAmI"].data["WhoAmI"].iloc[-1]
         except KeyError:
             return self.fail_test(None, "WhoAmI data stream is not present")
-        if whoAmI != self.whoami:
-            return self.fail_test(False, f"Expected WhoAmI value {self.whoami} but got {whoAmI}")
-        return self.pass_test(True, f"WhoAmI value is {whoAmI} as expected")
+        if who_am_i != self.whoami:
+            return self.fail_test(False, f"Expected WhoAmI value {self.whoami} but got {who_am_i}")
+        return self.pass_test(True, f"WhoAmI value is {who_am_i} as expected")
 
 
 class HarpSniffDetectorTestSuite(HarpDeviceTypeTestSuite):
@@ -320,7 +320,7 @@ class HarpSniffDetectorTestSuite(HarpDeviceTypeTestSuite):
         quantization_ratio_thr=0.1,
         clustering_thr=0.05,
         clipping_thr=0.05,
-        suddent_jumps_thr=0.001,
+        sudden_jumps_thr=0.001,
         notch_filter_freq=50,
     ):
         super().__init__(harp_device)
@@ -331,7 +331,7 @@ class HarpSniffDetectorTestSuite(HarpDeviceTypeTestSuite):
         self.quantization_ratio_thr = quantization_ratio_thr
         self.clustering_thr = clustering_thr
         self.clipping_thr = clipping_thr
-        self.suddent_jumps_thr = suddent_jumps_thr
+        self.sudden_jumps_thr = sudden_jumps_thr
         self.notch_filter_freq = notch_filter_freq
 
     def test_sniff_detector_sampling_rate(self):
@@ -370,7 +370,7 @@ class HarpSniffDetectorTestSuite(HarpDeviceTypeTestSuite):
             and metrics["clustering_ratio"] < self.clustering_thr
             and metrics["min_clipping"] < self.clipping_thr
             and metrics["max_clipping"] < self.clipping_thr
-            and metrics["sudden_jumps_ratio"] < self.suddent_jumps_thr
+            and metrics["sudden_jumps_ratio"] < self.sudden_jumps_thr
         )
 
         if is_ok:
