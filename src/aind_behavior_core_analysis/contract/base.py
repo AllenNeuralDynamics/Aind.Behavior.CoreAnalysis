@@ -180,6 +180,9 @@ class DataStreamCollectionBase(
 
         return table_str
 
+    def __iter__(self) -> Generator[DataStream, None, None]:
+        return self.walk_data_streams()
+
     def walk_data_streams(self) -> Generator[DataStream, None, None]:
         for value in self._hashmap.values():
             if isinstance(value, DataStream):
