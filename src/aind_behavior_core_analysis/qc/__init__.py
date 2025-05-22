@@ -1,5 +1,5 @@
 from . import csv, harp
-from ._context_extensions import ContextExportableObj, ASSET_RESERVED_KEYWORD
+from ._context_extensions import ASSET_RESERVED_KEYWORD, ContextExportableObj
 from .base import (
     Result,
     ResultsStatistics,
