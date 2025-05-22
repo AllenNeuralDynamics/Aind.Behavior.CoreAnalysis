@@ -163,6 +163,21 @@ class TestDataStreamCollection:
         assert stream2 in streams
         assert inner_collection in streams
 
+    def test_iter_streams(self, text_file):
+        """Test walking through data streams."""
+        stream1 = SimpleDataStream(name="stream1", reader_params=SimpleParams(path=text_file))
+        stream2 = SimpleDataStream(name="stream2", reader_params=SimpleParams(path=text_file))
+
+        inner_collection = DataStreamCollection(name="inner", data_streams=[stream2])
+
+        outer_collection = DataStreamCollection(name="outer", data_streams=[stream1, inner_collection])
+
+        streams = [s for s in outer_collection]
+        assert len(streams) == 3  # stream1, stream2, and inner_collection
+        assert stream1 in streams
+        assert stream2 in streams
+        assert inner_collection in streams
+
     def test_duplicate_names(self, text_file):
         """Test that duplicate names raise an error."""
         stream1 = SimpleDataStream(name="duplicate", reader_params=SimpleParams(path=text_file))
