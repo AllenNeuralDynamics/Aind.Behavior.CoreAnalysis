@@ -3,6 +3,7 @@ import dataclasses
 import os
 from typing import Any, ClassVar, Dict, Generator, Generic, List, Optional, Self, TypeVar
 
+from semver import Version
 from typing_extensions import override
 
 from aind_behavior_core_analysis import _typing
@@ -258,22 +259,45 @@ class DataStreamCollection(DataStreamCollectionBase[DataStream, _typing.UnsetPar
         self._update_hashmap()
         return
 
-    def from_data_stream(data_stream: DataStream) -> Self:
+    @classmethod
+    def from_data_stream(cls, data_stream: DataStream) -> Self:
         """Create a DataStreamCollection from a DataStream object."""
         if not isinstance(data_stream, DataStream):
             raise TypeError("data_stream must be an instance of DataStream.")
         if not data_stream.has_data:
             raise ValueError("DataStream has not been loaded yet. Cannot create DataStreamCollection.")
         data = data_stream.data if data_stream.is_collection else [data_stream.data]
-        return DataStreamCollection(name=data_stream.name, data_streams=data, description=data_stream.description)
+        return cls(name=data_stream.name, data_streams=data, description=data_stream.description)
 
 
-@dataclasses.dataclass
-class Dataset:
-    name: str
-    version: str
-    description: str
-    data_streams: DataStream
+class Dataset(DataStreamCollection):
+    @override
+    def __init__(
+        self,
+        name: str,
+        data_streams: List[DataStream],
+        *,
+        version: str | Version = "0.0.0",
+        description: Optional[str] = None,
+    ) -> None:
+        """Initializes a Dataset with a version and a list of data streams."""
+        super().__init__(
+            name=name,
+            data_streams=data_streams,
+            description=description,
+        )
+        self._version = self._parse_semver(version)
+
+    @staticmethod
+    def _parse_semver(version: str | Version) -> Version:
+        """Parse a version string into a Version object."""
+        if isinstance(version, str):
+            return Version.parse(version)
+        return version
+
+    @property
+    def version(self) -> Version:
+        return self._version
 
 
 @dataclasses.dataclass
