@@ -4,7 +4,8 @@ from aind_behavior_core_analysis.qc.base import (
     Status,
     Suite,
     allow_null_as_pass,
-    allow_skippable,
+    elevated_skips,
+    elevated_warnings,
     implicit_pass,
 )
 
@@ -23,6 +24,10 @@ class SimpleSuite(Suite):
     def test_always_skip(self):
         """A test that always skips."""
         return self.skip_test("This test was skipped")
+
+    def test_always_warn(self):
+        """A test that always warns."""
+        return self.warn_test("warning", "This test was a warning")
 
     def test_return_none(self):
         """A test that returns None."""
@@ -57,7 +62,7 @@ class TestSuite:
         tests = list(suite.get_tests())
 
         # The number of tests in the SimpleTestSuite
-        assert len(tests) == 7
+        assert len(tests) == 8
 
         for test in tests:
             assert callable(test)
@@ -94,24 +99,48 @@ class TestSuite:
         suite = SimpleSuite()
         test_method = suite.test_always_skip
 
-        with allow_skippable(True):
+        with elevated_skips(False):
             results = list(suite.run_test(test_method))
 
         assert len(results) == 1
         assert results[0].status == Status.SKIPPED
         assert results[0].message == "This test was skipped"
 
-    def test_run_test_skip_not_allowed(self):
+    def test_run_test_skip_elevated(self):
         """Test running a test that skips in a non-skippable context."""
         suite = SimpleSuite()
         test_method = suite.test_always_skip
 
-        with allow_skippable(False):
+        with elevated_skips(True):
             results = list(suite.run_test(test_method))
 
         assert len(results) == 1
         assert results[0].status == Status.FAILED
         assert results[0].message == "This test was skipped"
+
+    def test_run_test_warn(self):
+        """Test running a test that warns."""
+        suite = SimpleSuite()
+        test_method = suite.test_always_warn
+
+        with elevated_warnings(False):
+            results = list(suite.run_test(test_method))
+
+        assert len(results) == 1
+        assert results[0].status == Status.WARNING
+        assert results[0].message == "This test was a warning"
+
+    def test_run_test_warn_elevated(self):
+        """Test running a test that skips in a non-skippable context."""
+        suite = SimpleSuite()
+        test_method = suite.test_always_warn
+
+        with elevated_warnings(True):
+            results = list(suite.run_test(test_method))
+
+        assert len(results) == 1
+        assert results[0].status == Status.FAILED
+        assert results[0].message == "This test was a warning"
 
     def test_run_test_none(self):
         """Test running a test that returns None."""
@@ -171,27 +200,30 @@ class TestSuite:
         suite = SimpleSuite()
         results = list(suite.run_all())
 
-        assert len(results) == 9
+        assert len(results) == 10
 
         statuses = [r.status for r in results]
         assert statuses.count(Status.PASSED) == 4
         assert statuses.count(Status.FAILED) == 2
         assert statuses.count(Status.SKIPPED) == 1
         assert statuses.count(Status.ERROR) == 2
+        assert statuses.count(Status.WARNING) == 1
 
     def test_run_all_with_context(self):
         """Test running all tests with context managers."""
         suite = SimpleSuite()
 
         with allow_null_as_pass():
-            with allow_skippable(False):
-                results = list(suite.run_all())
+            with elevated_skips(True):
+                with elevated_warnings(True):
+                    results = list(suite.run_all())
 
-                statuses = [r.status for r in results]
-                assert statuses.count(Status.PASSED) == 5
-                assert statuses.count(Status.FAILED) == 3
-                assert statuses.count(Status.SKIPPED) == 0
-                assert statuses.count(Status.ERROR) == 1
+                    statuses = [r.status for r in results]
+                    assert statuses.count(Status.PASSED) == 5
+                    assert statuses.count(Status.FAILED) == 4
+                    assert statuses.count(Status.SKIPPED) == 0
+                    assert statuses.count(Status.WARNING) == 0
+                    assert statuses.count(Status.ERROR) == 1
 
     def test_setup_teardown(self):
         class SetupTeardownSuite(Suite):
