@@ -1,5 +1,3 @@
-"""Tests for the contract camera module."""
-
 import os
 from unittest.mock import patch
 

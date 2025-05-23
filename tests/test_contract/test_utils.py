@@ -1,5 +1,3 @@
-"""Tests for the contract utils module."""
-
 import pytest
 
 from aind_behavior_core_analysis.contract.base import DataStreamCollection
