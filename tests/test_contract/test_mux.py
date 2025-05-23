@@ -1,5 +1,3 @@
-"""Tests for the contract mux module."""
-
 from pathlib import Path
 
 import pytest

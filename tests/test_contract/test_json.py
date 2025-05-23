@@ -1,5 +1,3 @@
-"""Tests for the contract json module."""
-
 import json
 
 import pandas as pd
