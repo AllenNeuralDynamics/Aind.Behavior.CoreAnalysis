@@ -15,6 +15,17 @@ class CameraData:
     metadata: pd.DataFrame
     video_path: os.PathLike
 
+    @property
+    def has_video(self) -> bool:
+        if not (self.video_path is not None and os.path.exists(self.video_path)):
+            return False
+        # Not sure why this would fail, but I since its a check, lets make sure we catch it
+        try:
+            with self.as_video_capture() as video:
+                return video.isOpened()
+        except Exception:
+            return False
+
     @contextmanager
     def as_video_capture(self):
         cap = VideoCapture(str(self.video_path))
