@@ -1,4 +1,4 @@
-from . import csv, harp
+from . import camera, csv, harp
 from ._context_extensions import ASSET_RESERVED_KEYWORD, ContextExportableObj
 from .base import (
     Result,
@@ -24,4 +24,5 @@ __all__ = [
     "ASSET_RESERVED_KEYWORD",
     "harp",
     "csv",
+    "camera",
 ]
