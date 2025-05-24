@@ -55,8 +55,8 @@ class CameraTestSuite(Suite):
         """
         Check if there are dropped frames in the metadata DataFrame.
         """
-        metadata = self.data_stream.data.metadata[list(self._expected_columns - {"ReferenceTime"})]
-        metadata["ReferenceTime"] = metadata.index.values
+        metadata = (self.data_stream.data.metadata[list(self._expected_columns - {"ReferenceTime"})]).copy()
+        metadata.loc[:, "ReferenceTime"] = metadata.index.values
         diff_metadata = metadata.diff()
         # Convert CameraFrameTime to seconds
         diff_metadata["CameraFrameTime"] = diff_metadata["CameraFrameTime"] * 1e-9

@@ -97,6 +97,28 @@ class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
             f"data_type={self._data.__class__.__name__ if self.has_data else 'Not Loaded'}"
         )
 
+    def __iter__(self) -> Generator["DataStream", None, None]:
+        if False:
+            yield
+
+    def load_all(self, strict: bool = False) -> Generator[tuple["DataStream", Optional[Exception]], None, None]:
+        """Recursively load all data streams in the branch using breadth-first traversal.
+
+        This method first loads the data for the current node, then proceeds to load
+        all child nodes in a breadth-first manner.
+        """
+        self.load()
+        for stream in self:
+            if stream is None:
+                continue
+            if strict:
+                yield from stream.load_all(strict=strict)
+            else:
+                try:
+                    yield from stream.load_all(strict=strict)
+                except Exception as e:
+                    yield (stream, e)
+
 
 TDataStream = TypeVar("TDataStream", bound=DataStream[Any, Any])
 
@@ -182,14 +204,11 @@ class DataStreamCollectionBase(
         return table_str
 
     def __iter__(self) -> Generator[DataStream, None, None]:
-        return self.walk_data_streams()
-
-    def walk_data_streams(self) -> Generator[DataStream, None, None]:
         for value in self._hashmap.values():
             if isinstance(value, DataStream):
                 yield value
             if isinstance(value, DataStreamCollectionBase):
-                yield from value.walk_data_streams()
+                yield from value.__iter__()
 
 
 class DataStreamCollection(DataStreamCollectionBase[DataStream, _typing.UnsetParamsType]):

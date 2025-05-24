@@ -78,7 +78,7 @@ class MockHarpDevice:
             raise KeyError(f"Register {key} not found")
         return self._registers[key]
 
-    def walk_data_streams(self):
+    def __iter__(self):
         """Generator for all data streams."""
         for reg in self._registers.values():
             yield reg
