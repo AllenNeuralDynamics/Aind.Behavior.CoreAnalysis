@@ -14,7 +14,7 @@ from aind_behavior_core_analysis.contract.harp import (
 from aind_behavior_core_analysis.contract.json import PydanticModel, SoftwareEvents
 from aind_behavior_core_analysis.contract.mux import MapFromPaths
 from aind_behavior_core_analysis.contract.text import Text
-from aind_behavior_core_analysis.contract.utils import load_branch, print_data_stream_tree
+from aind_behavior_core_analysis.contract.utils import print_data_stream_tree
 
 dataset_root = Path(r"path_to_data")
 my_dataset = Dataset(
