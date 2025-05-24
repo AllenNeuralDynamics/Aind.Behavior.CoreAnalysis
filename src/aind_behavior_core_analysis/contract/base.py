@@ -101,23 +101,20 @@ class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
         if False:
             yield
 
-    def load_all(self, strict: bool = False) -> Generator[tuple["DataStream", Optional[Exception]], None, None]:
-        """Recursively load all data streams in the branch using breadth-first traversal.
-
-        This method first loads the data for the current node, then proceeds to load
-        all child nodes in a breadth-first manner.
-        """
+    def load_all(self, strict: bool = False) -> list[tuple["DataStream", Exception], None, None]:
+        """Recursively load all data streams in the branch using depth-first traversal manner."""
         self.load()
+        exceptions = []
         for stream in self:
             if stream is None:
                 continue
-            if strict:
-                yield from stream.load_all(strict=strict)
-            else:
-                try:
-                    yield from stream.load_all(strict=strict)
-                except Exception as e:
-                    yield (stream, e)
+            try:
+                stream.load_all(strict=strict)
+            except Exception as e:
+                if strict:
+                    raise e
+                exceptions.append((stream, e))
+        return exceptions
 
 
 TDataStream = TypeVar("TDataStream", bound=DataStream[Any, Any])

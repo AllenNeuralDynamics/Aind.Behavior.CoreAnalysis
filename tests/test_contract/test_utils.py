@@ -15,8 +15,7 @@ class TestLoadAllChildren:
 
         collection = DataStreamCollection(name="collection", data_streams=[stream1, stream2])
 
-        result = list(collection.load_all())
-
+        result = collection.load_all()
         assert result == []  # No exceptions
         assert stream1.has_data
         assert stream2.has_data
@@ -30,7 +29,7 @@ class TestLoadAllChildren:
 
         collection = DataStreamCollection(name="collection", data_streams=[stream1, stream2])
 
-        result = list(collection.load_all())
+        result = collection.load_all()
 
         assert len(result) == 1
         assert result[0][0] == stream2
@@ -49,4 +48,4 @@ class TestLoadAllChildren:
         collection = DataStreamCollection(name="collection", data_streams=[stream1, stream2])
 
         with pytest.raises(FileNotFoundError):
-            list(collection.load_all(strict=True))
+            collection.load_all(strict=True)
