@@ -20,7 +20,10 @@ class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
         reader_params: Optional[_typing.TReaderParams] = None,
         **kwargs,
     ) -> None:
+        if "::" in name:
+            raise ValueError("Name cannot contain '::' character.")
         self._name = name
+
         self._description = description
         self._reader_params = reader_params if reader_params is not None else _typing.UnsetParams
         self._data = _typing.UnsetData
@@ -29,6 +32,16 @@ class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
     @property
     def name(self) -> str:
         return self._name
+
+    @property
+    def resolved_name(self) -> str:
+        """Get the resolved name of the data stream."""
+        builder = self.name
+        d = self
+        while d._parent is not None:
+            builder = f"{d._parent.name}::{builder}"
+            d = d._parent
+        return builder
 
     @property
     def description(self) -> Optional[str]:
@@ -96,6 +109,24 @@ class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
             f"reader_params={self._reader_params}, "
             f"data_type={self._data.__class__.__name__ if self.has_data else 'Not Loaded'}"
         )
+
+    def __iter__(self) -> Generator["DataStream", None, None]:
+        yield
+
+    def load_all(self, strict: bool = False) -> list[tuple["DataStream", Exception], None, None]:
+        """Recursively load all data streams in the branch using depth-first traversal manner."""
+        self.load()
+        exceptions = []
+        for stream in self:
+            if stream is None:
+                continue
+            try:
+                stream.load_all(strict=strict)
+            except Exception as e:
+                if strict:
+                    raise e
+                exceptions.append((stream, e))
+        return exceptions
 
 
 TDataStream = TypeVar("TDataStream", bound=DataStream[Any, Any])
@@ -182,14 +213,11 @@ class DataStreamCollectionBase(
         return table_str
 
     def __iter__(self) -> Generator[DataStream, None, None]:
-        return self.walk_data_streams()
-
-    def walk_data_streams(self) -> Generator[DataStream, None, None]:
         for value in self._hashmap.values():
             if isinstance(value, DataStream):
                 yield value
             if isinstance(value, DataStreamCollectionBase):
-                yield from value.walk_data_streams()
+                yield from value.__iter__()
 
 
 class DataStreamCollection(DataStreamCollectionBase[DataStream, _typing.UnsetParamsType]):

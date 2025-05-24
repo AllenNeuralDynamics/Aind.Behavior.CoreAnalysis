@@ -78,7 +78,7 @@ class HarpDeviceTestSuite(Suite):
         Check if the read dump from an harp device is complete
         """
         expected_regs = self.harp_device.device_reader.device.registers.keys()
-        ds = list(self.harp_device.walk_data_streams())
+        ds = [stream for stream in self.harp_device]
         missing_regs = [reg_name for reg_name in expected_regs if reg_name not in [r.name for r in ds]]
         if len(missing_regs) > 0:
             return self.fail_test(
@@ -105,7 +105,7 @@ class HarpDeviceTestSuite(Suite):
         op_ctr = op_ctr.index.values[0]
 
         reg_error = []
-        for req_reg in self.harp_device_commands.walk_data_streams():
+        for req_reg in self.harp_device_commands:
             if req_reg.has_data:  # Only data streams with data can be checked
                 # Only "Writes" will be considered, but in theory we could also check "Reads"
                 requests: pd.DataFrame = req_reg.data[req_reg.data["MessageType"] == "WRITE"]
@@ -139,7 +139,7 @@ class HarpDeviceTestSuite(Suite):
         """
         reg_errors = []
         reg: HarpRegister
-        for reg in self.harp_device.walk_data_streams():
+        for reg in self.harp_device:
             for message_type, reg_type_data in reg.data.groupby("MessageType", observed=True):
                 if not reg_type_data.index.is_monotonic_increasing:
                     reg_errors.append(
@@ -237,7 +237,7 @@ class HarpHubTestSuite(Suite):
 
     def test_clock_generator_reg(self):
         """Checks if the clock generator device is actually a clock generator"""
-        if "ClockConfiguration" not in [x.name for x in self.clock_generator_device.walk_data_streams()]:
+        if "ClockConfiguration" not in [x.name for x in self.clock_generator_device]:
             return self.fail_test(None, "ClockConfiguration data stream is not present")
         clock_reg = self.clock_generator_device["ClockConfiguration"].data.iloc[-1]
         if clock_reg["ClockGenerator"]:
@@ -248,7 +248,7 @@ class HarpHubTestSuite(Suite):
     def test_devices_are_subordinate(self):
         """Checks if the devices are subordinate to the clock generator"""
         for device in self.devices:
-            if "ClockConfiguration" not in [x.name for x in device.walk_data_streams()]:
+            if "ClockConfiguration" not in [x.name for x in device]:
                 yield self.fail_test(None, f"ClockConfiguration data stream is not present in {device.name}")
             elif device["ClockConfiguration"].data.iloc[-1]["ClockGenerator"]:
                 yield self.fail_test(False, f"Device {device.name} is not subordinate to the clock generator")

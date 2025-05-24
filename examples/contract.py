@@ -14,7 +14,7 @@ from aind_behavior_core_analysis.contract.harp import (
 from aind_behavior_core_analysis.contract.json import PydanticModel, SoftwareEvents
 from aind_behavior_core_analysis.contract.mux import MapFromPaths
 from aind_behavior_core_analysis.contract.text import Text
-from aind_behavior_core_analysis.contract.utils import load_branch, print_data_stream_tree
+from aind_behavior_core_analysis.contract.utils import print_data_stream_tree
 
 dataset_root = Path(r"path_to_data")
 my_dataset = Dataset(
@@ -372,11 +372,10 @@ my_dataset = Dataset(
 
 
 if __name__ == "__main__":
-    my_dataset.walk_data_streams()
     print(my_dataset.at("Behavior").at("HarpManipulator").load().at("WhoAmI").load().data)
-    len([x for x in tuple(my_dataset.walk_data_streams()) if ((not x.is_collection) and isinstance(x, SoftwareEvents))])
+    len([x for x in my_dataset if ((not x.is_collection) and isinstance(x, SoftwareEvents))])
 
-    exc = load_branch(my_dataset)
+    exc = my_dataset.load_all()
 
     for e in exc if exc is not None else []:
         print(f"Stream: {e[0]}")
@@ -406,3 +405,5 @@ if __name__ == "__main__":
 
     with open("my_dataset.md", "w", encoding="UTF-8") as f:
         f.write(print_data_stream_tree(my_dataset))
+
+    print(my_dataset.at("Behavior").at("HarpBehavior").resolved_name)
