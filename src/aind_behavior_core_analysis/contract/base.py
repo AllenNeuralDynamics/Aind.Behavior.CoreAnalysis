@@ -20,7 +20,10 @@ class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
         reader_params: Optional[_typing.TReaderParams] = None,
         **kwargs,
     ) -> None:
+        if "::" in name:
+            raise ValueError("Name cannot contain '::' character.")
         self._name = name
+
         self._description = description
         self._reader_params = reader_params if reader_params is not None else _typing.UnsetParams
         self._data = _typing.UnsetData
@@ -29,6 +32,16 @@ class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
     @property
     def name(self) -> str:
         return self._name
+
+    @property
+    def resolved_name(self) -> str:
+        """Get the resolved name of the data stream."""
+        builder = self.name
+        d = self
+        while d._parent is not None:
+            builder = f"{d._parent.name}::{builder}"
+            d = d._parent
+        return builder
 
     @property
     def description(self) -> Optional[str]:
