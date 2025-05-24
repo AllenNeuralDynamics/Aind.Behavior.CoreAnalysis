@@ -98,8 +98,7 @@ class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
         )
 
     def __iter__(self) -> Generator["DataStream", None, None]:
-        if False:
-            yield
+        yield
 
     def load_all(self, strict: bool = False) -> list[tuple["DataStream", Exception], None, None]:
         """Recursively load all data streams in the branch using depth-first traversal manner."""
