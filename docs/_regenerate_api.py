@@ -73,7 +73,7 @@ def update_mkdocs_yml(api_structure):
     nav = config.get("nav")
     for entry in nav:
         if isinstance(entry, dict) and API_LABEL in entry:
-            api_ref = []
+            api_ref = ["api/index.md"]
             for module_name, module_content in api_structure.items():
                 api_ref.append({module_name.capitalize(): module_content})
             entry[API_LABEL] = api_ref
