@@ -372,11 +372,10 @@ my_dataset = Dataset(
 
 
 if __name__ == "__main__":
-    my_dataset.walk_data_streams()
     print(my_dataset.at("Behavior").at("HarpManipulator").load().at("WhoAmI").load().data)
     len([x for x in my_dataset if ((not x.is_collection) and isinstance(x, SoftwareEvents))])
 
-    exc = list(my_dataset.load_all())
+    exc = my_dataset.load_all()
 
     for e in exc if exc is not None else []:
         print(f"Stream: {e[0]}")
@@ -406,3 +405,5 @@ if __name__ == "__main__":
 
     with open("my_dataset.md", "w", encoding="UTF-8") as f:
         f.write(print_data_stream_tree(my_dataset))
+
+    print(my_dataset.at("Behavior").at("HarpBehavior").resolved_name)
