@@ -390,7 +390,14 @@ class Runner:
 
         return status_bar
 
-    def run_all_with_progress(self) -> t.List[Result]:
+    def run_all_with_progress(
+        self,
+        *,
+        render_context: bool = True,
+        render_description: bool = True,
+        render_traceback: bool = True,
+        render_message: bool = True,
+    ) -> t.List[Result]:
         """Run all tests in all suites with a rich progress display and aligned columns."""
 
         suite_tests = [(suite, list(suite.get_tests())) for suite in self.suites]
@@ -456,13 +463,25 @@ class Runner:
 
         self._results = all_results
         if self._results:
-            self.print_results(self._results)
+            self.print_results(
+                self._results,
+                render_description=render_description,
+                render_traceback=render_traceback,
+                render_message=render_message,
+                render_context=render_context,
+            )
 
         return all_results
 
     @staticmethod
     def print_results(
-        all_results: t.List[Result], include: set[Status] = set((Status.FAILED, Status.ERROR, Status.WARNING))
+        all_results: t.List[Result],
+        include: set[Status] = set((Status.FAILED, Status.ERROR, Status.WARNING)),
+        *,
+        render_context: bool = True,
+        render_description: bool = True,
+        render_traceback: bool = True,
+        render_message: bool = True,
     ):
         if all_results:
             included_tests = [r for r in all_results if r.status in include]
@@ -489,18 +508,18 @@ class Runner:
 
                     console.print(f"[{color}]Result:[/{color}] {test_result.result}")
 
-                    if test_result.message:
+                    if render_message and test_result.message:
                         console.print(f"[{color}]Message:[/{color}] {test_result.message}")
 
-                    if test_result.description:
+                    if render_description and test_result.description:
                         console.print(f"[{color}]Description:[/{color}] {test_result.description}")
 
-                    if test_result.traceback:
+                    if render_traceback and test_result.traceback:
                         console.print(f"[{color}]Traceback:[/{color}]")
                         syntax = Syntax(test_result.traceback, "pytb", theme="ansi", line_numbers=False)
                         console.print(syntax)
 
-                    if test_result.context:
+                    if render_context and test_result.context:
                         console.print(f"[{color}]Context:[/{color}] {test_result.context}")
 
                     console.print("=" * 80)
