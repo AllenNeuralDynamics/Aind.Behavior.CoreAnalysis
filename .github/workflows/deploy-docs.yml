@@ -21,9 +21,6 @@ jobs:
 
       - name: Install dependencies
         run: uv sync --extra docs
-        
-      - name: Regenerate api
-        run: uv run ./examples/_regenerate_api.py
   
       - name: Configure Git user
         run: |
