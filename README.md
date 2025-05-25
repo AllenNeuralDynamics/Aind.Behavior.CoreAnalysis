@@ -1,5 +1,5 @@
 # aind-behavior-core-analysis
-
+[![Documentation](https://tinyurl.com/bdd8prh7)](https://allenneuraldynamics.github.io/Aind.Behavior.CoreAnalysis/)
 ![CI](https://github.com/AllenNeuralDynamics/Aind.Behavior.CoreAnalysis/actions/workflows/ci.yml/badge.svg)
 [![PyPI - Version](https://img.shields.io/pypi/v/aind-behavior-core-analysis)](https://pypi.org/project/aind-behavior-core-analysis/)
 [![License](https://img.shields.io/badge/license-MIT-brightgreen)](LICENSE)
