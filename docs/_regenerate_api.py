@@ -3,9 +3,13 @@
 Script to regenerate the API documentation structure in mkdocs.yml
 based on the current state of the library.
 """
+import logging, re
+import mkdocs
+
 
 from pathlib import Path
 
+import mkdocs.config
 import yaml
 
 # Constants
@@ -19,6 +23,12 @@ API_LABEL = "API Reference"
 
 # Leaving this manual for now.
 DOCUMENTED_MODULES = ["contract", "qc"]
+
+log = logging.getLogger('mkdocs')
+
+
+def on_pre_build(config):
+    main()
 
 
 def find_modules(base_dir, module_name):
@@ -78,13 +88,13 @@ def update_mkdocs_yml(api_structure):
                 api_ref.append({module_name.capitalize(): module_content})
             entry[API_LABEL] = api_ref
 
-    with open(MKDOCS_YML, "w") as f:
+    with open(MKDOCS_YML, "w+") as f:
         yaml.dump(config, f, sort_keys=False, default_flow_style=False)
 
 
 def main():
     """Main function."""
-    print("Regenerating API documentation...")
+    log.info("Regenerating API documentation...")
 
     # Generate API structure
     api_structure = generate_api_structure()
@@ -92,7 +102,8 @@ def main():
     # Update mkdocs.yml
     update_mkdocs_yml(api_structure)
 
-    print("API documentation regenerated successfully.")
+    log.info("API documentation regenerated successfully.")
+
 
 
 if __name__ == "__main__":
