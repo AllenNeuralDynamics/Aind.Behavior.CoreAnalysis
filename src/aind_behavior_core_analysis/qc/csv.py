@@ -5,9 +5,21 @@ from .base import Suite
 
 
 class CsvTestSuite(Suite):
-    """Test suite to check if CSV files generated are well formatted."""
+    """Test suite to check if CSV files generated are well formatted.
+
+    Provides tests to validate that CSV files conform to expected formatting standards
+    and contain valid data.
+
+    Attributes:
+        data_stream: The CSV data stream to test.
+    """
 
     def __init__(self, data_stream: Csv):
+        """Initialize the CSV test suite.
+
+        Args:
+            data_stream: The CSV data stream to test.
+        """
         self.data_stream = data_stream
 
     def test_is_instance_of_pandas_dataframe(self):
