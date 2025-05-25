@@ -11,6 +11,20 @@ _TDataStream = TypeVar("_TDataStream", bound=DataStream[Any, _typing.TReaderPara
 
 @dataclasses.dataclass
 class MapFromPathsParams(Generic[_TDataStream]):
+    """Parameters for creating multiple data streams from file paths.
+
+    Defines parameters for locating files and creating data streams for each one.
+
+    Attributes:
+        paths: List of directory paths to search for files.
+        include_glob_pattern: List of glob patterns to match files to include.
+        inner_data_stream: Type of DataStream to create for each matched file.
+        inner_param_factory: Function that creates reader params from file paths.
+        as_collection: Whether to return results as a collection. Defaults to True.
+        exclude_glob_pattern: List of glob patterns for files to exclude.
+        inner_descriptions: Dictionary mapping file stems to descriptions for streams.
+    """
+
     paths: List[os.PathLike]
     include_glob_pattern: List[str]
     inner_data_stream: Type[_TDataStream]
@@ -20,6 +34,13 @@ class MapFromPathsParams(Generic[_TDataStream]):
     inner_descriptions: dict[str, Optional[str]] = dataclasses.field(default_factory=dict)
 
     def __post_init__(self):
+        """Validate and normalize the paths parameter after initialization.
+
+        Ensures paths is a list and validates that at least one path is provided.
+
+        Raises:
+            ValueError: If no paths are provided.
+        """
         if isinstance(self.paths, (str, os.PathLike)):
             self.paths = [self.paths]
         if len(self.paths) == 0:
@@ -27,10 +48,30 @@ class MapFromPathsParams(Generic[_TDataStream]):
 
 
 class MapFromPaths(DataStreamCollectionBase[_TDataStream, MapFromPathsParams]):
+    """File path mapper data stream provider.
+
+    A data stream implementation for creating multiple child data streams
+    by searching for files matching glob patterns and creating a stream for each.
+
+    Args:
+        DataStreamCollectionBase: Base class for data stream collection providers.
+    """
+
     make_params = MapFromPathsParams
 
     @staticmethod
     def _reader(params: MapFromPathsParams[_TDataStream]) -> List[_TDataStream]:
+        """Create data streams for files matching the specified patterns.
+
+        Args:
+            params: Parameters for file path mapping configuration.
+
+        Returns:
+            List[_TDataStream]: List of data stream objects, one per matched file.
+
+        Raises:
+            ValueError: If duplicate file stems (names without extensions) are found.
+        """
         _hits: List[Path] = []
 
         for p in params.paths:

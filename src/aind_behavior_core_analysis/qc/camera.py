@@ -11,10 +11,21 @@ from .base import Suite
 
 
 class CameraTestSuite(Suite):
-    """Test suite to check the primary data integraty for videos.
-    It is assumed that videos are generated following the AIND
-    file format speicification.
-    https://github.com/AllenNeuralDynamics/aind-file-standards/blob/ce0aa517a40064d1ac9764d42c9efe4ae5c61f7b/file_formats/behavior_videos.md"""
+    """Test suite for validating camera data integrity.
+
+    Provides tests for validating video and metadata integrity according to the AIND
+    file format specification for behavior videos.
+
+    For more details, see:
+    https://github.com/AllenNeuralDynamics/aind-file-standards/blob/ce0aa517a40064d1ac9764d42c9efe4ae5c61f7b/file_formats/behavior_videos.md
+
+    Attributes:
+        data_stream: The Camera data stream to test.
+        expected_fps: Optional expected frames per second for validation.
+        clock_jitter_s: Maximum allowed time difference between frame timestamps, in seconds.
+        start_time_s: Optional expected start time for validation, in seconds.
+        stop_time_s: Optional expected stop time for validation, in seconds.
+    """
 
     _expected_columns = {"ReferenceTime", "CameraFrameNumber", "CameraFrameTime"}
 
@@ -27,6 +38,15 @@ class CameraTestSuite(Suite):
         start_time_s: t.Optional[float] = None,
         stop_time_s: t.Optional[float] = None,
     ):
+        """Initialize the camera test suite.
+
+        Args:
+            data_stream: The Camera data stream to test.
+            expected_fps: Optional expected frames per second for validation.
+            clock_jitter_s: Maximum allowed time difference between frame timestamps, in seconds.
+            start_time_s: Optional expected start time for validation, in seconds.
+            stop_time_s: Optional expected stop time for validation, in seconds.
+        """
         self.data_stream: Camera = data_stream
         self.expected_fps = expected_fps
         self.clock_jitter_s = clock_jitter_s

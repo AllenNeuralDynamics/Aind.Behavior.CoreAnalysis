@@ -2,6 +2,31 @@ from .base import DataStream
 
 
 def print_data_stream_tree(node: DataStream, prefix: str = "", is_last: bool = True, parents: list[bool] = []) -> str:
+    """Generates a tree representation of a data stream hierarchy.
+
+    Creates a formatted string displaying the hierarchical structure of a data stream
+    and its children as a tree with branch indicators and icons.
+
+    Args:
+        node: The data stream node to start printing from.
+        prefix: Prefix string to prepend to each line, used for indentation.
+        is_last: Whether this node is the last child of its parent.
+        parents: List tracking whether each ancestor was a last child, used for drawing branches.
+
+    Returns:
+        str: A formatted string representing the data stream tree.
+
+    Example:
+        ```
+        print(print_data_stream_tree(dataset))
+        # Output:
+        # 📂 dataset
+        # ├── 📄 stream1
+        # └── 📂 collection1
+        #     ├── 📄 nested_stream1
+        #     └── 📄 nested_stream2
+        ```
+    """
     icon_map = {
         False: "📄",
         True: "📂",

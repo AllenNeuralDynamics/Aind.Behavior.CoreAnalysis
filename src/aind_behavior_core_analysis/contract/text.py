@@ -5,12 +5,37 @@ from .base import DataStream, FilePathBaseParam
 
 @dataclass
 class TextParams(FilePathBaseParam):
+    """Parameters for text file processing.
+
+    Extends the base file path parameters with text encoding configuration.
+
+    Attributes:
+        encoding: The character encoding to use when reading the text file. Defaults to UTF-8.
+    """
+
     encoding: str = "UTF-8"
 
 
 class Text(DataStream[str, TextParams]):
+    """Text file data stream provider.
+
+    A data stream implementation for reading text files as a single string
+    with configurable character encoding.
+
+    Args:
+        DataStream: Base class for data stream providers.
+    """
+
     @staticmethod
     def _reader(params: TextParams) -> str:
+        """Read text file into a string.
+
+        Args:
+            params: Parameters for text file reading configuration.
+
+        Returns:
+            str: String containing the contents of the text file.
+        """
         with open(params.path, "r", encoding=params.encoding) as file:
             return file.read()
 

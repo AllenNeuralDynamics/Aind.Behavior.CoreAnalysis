@@ -12,7 +12,6 @@ import rich.progress
 from rich.console import Console
 from rich.syntax import Syntax
 
-# Define context variables with default values
 _elevate_skippable = contextvars.ContextVar("elevate_skippable", default=False)
 _elevate_warning = contextvars.ContextVar("elevate_warning", default=False)
 _allow_null_as_pass_ctx = contextvars.ContextVar("allow_null_as_pass", default=False)
@@ -20,7 +19,14 @@ _allow_null_as_pass_ctx = contextvars.ContextVar("allow_null_as_pass", default=F
 
 @contextmanager
 def allow_null_as_pass(value: bool = True):
-    """Context manager to control whether null results are allowed as pass."""
+    """Context manager to control whether null results are allowed as pass.
+
+    When enabled, tests that return None will be treated as passing tests
+    rather than producing errors.
+
+    Args:
+        value: True to allow null results as passing, False otherwise.
+    """
     token = _allow_null_as_pass_ctx.set(value)
     try:
         yield
@@ -30,7 +36,14 @@ def allow_null_as_pass(value: bool = True):
 
 @contextmanager
 def elevated_skips(value: bool = True):
-    """Context manager to control whether tests can be skipped."""
+    """Context manager to control whether skipped tests are treated as failures.
+
+    When enabled, skipped tests will be treated as failing tests rather than
+    being merely marked as skipped.
+
+    Args:
+        value: True to elevate skipped tests to failures, False otherwise.
+    """
     token = _elevate_skippable.set(value)
     try:
         yield
@@ -40,7 +53,14 @@ def elevated_skips(value: bool = True):
 
 @contextmanager
 def elevated_warnings(value: bool = True):
-    """Context manager to control whether warnings are allowed."""
+    """Context manager to control whether warnings are treated as failures.
+
+    When enabled, warning results will be treated as failing tests rather than
+    just being marked as warnings.
+
+    Args:
+        value: True to elevate warnings to failures, False otherwise.
+    """
     token = _elevate_warning.set(value)
     try:
         yield
@@ -49,6 +69,11 @@ def elevated_warnings(value: bool = True):
 
 
 class Status(Enum):
+    """Enum representing possible test result statuses.
+
+    Defines the different states a test can be in after execution.
+    """
+
     PASSED = auto()
     FAILED = auto()
     ERROR = auto()
@@ -56,6 +81,11 @@ class Status(Enum):
     WARNING = auto()
 
     def __str__(self) -> str:
+        """Convert status to lowercase string representation.
+
+        Returns:
+            str: Lowercase string representation of the status.
+        """
         return self.name.lower()
 
 
@@ -70,6 +100,12 @@ STATUS_COLOR = {
 
 @t.runtime_checkable
 class ITest(t.Protocol):
+    """Protocol defining the interface for test functions.
+
+    A test function should be callable, return a Result object or generator,
+    and have a __name__ attribute.
+    """
+
     def __call__(self) -> "Result" | t.Generator["Result", None, None]: ...
 
     @property
@@ -81,6 +117,24 @@ TResult = t.TypeVar("TResult", bound=t.Any)
 
 @dataclasses.dataclass
 class Result(t.Generic[TResult]):
+    """Container for test execution results.
+
+    Stores the outcome of a test execution including status, returned value,
+    contextual information, and any exception details.
+
+    Attributes:
+        status: The status of the test execution.
+        result: The value returned by the test.
+        test_name: Name of the test that generated this result.
+        suite_name: Name of the test suite containing the test.
+        _test_reference: Optional reference to the test function.
+        message: Optional message describing the test outcome.
+        context: Optional contextual data for the test result.
+        description: Optional description of the test.
+        exception: Optional exception that occurred during test execution.
+        traceback: Optional traceback string if an exception occurred.
+    """
+
     status: Status
     result: TResult
     test_name: str
@@ -94,8 +148,24 @@ class Result(t.Generic[TResult]):
 
 
 def implicit_pass(func):
+    """Decorator to automatically convert non-Result return values to passing results.
+
+    If a test method returns something other than a Result object, this decorator
+    will wrap it in a passing Result with the original return value.
+
+    Args:
+        func: The function to decorate.
+
+    Returns:
+        callable: Decorated function that ensures Result objects are returned.
+
+    Raises:
+        TypeError: If the decorated function is not a method of a Suite object.
+    """
+
     @functools.wraps(func)
     def wrapper(self, *args, **kwargs):
+        """Wrapper function to ensure the decorated function returns a Result."""
         result = func(self, *args, **kwargs)
 
         if isinstance(result, Result):
@@ -115,22 +185,53 @@ def implicit_pass(func):
 
 
 class Suite(abc.ABC):
+    """Base class for test suites.
+
+    Provides the core functionality for defining, running, and reporting on tests.
+    All test suites should inherit from this class and implement test methods
+    that start with 'test'.
+    """
+
     def get_tests(self) -> t.Generator[ITest, None, None]:
-        """Find all methods starting with 'test'."""
+        """Find all methods starting with 'test'.
+
+        Yields:
+            ITest: Test methods found in the suite.
+        """
         for name, method in inspect.getmembers(self, predicate=inspect.ismethod):
             if name.startswith("test"):
                 yield method
 
     @property
     def description(self) -> t.Optional[str]:
+        """Get the description of the test suite from its docstring.
+
+        Returns:
+            Optional[str]: The docstring of the class, or None if not available.
+        """
         return getattr(self, "__doc__", None)
 
     @property
     def name(self) -> str:
+        """Get the name of the test suite.
+
+        Returns:
+            str: The name of the test suite class.
+        """
         return self.__class__.__name__
 
     def _get_caller_info(self):
-        """Get information about the calling function."""
+        """Get information about the calling function.
+
+        Retrieves the name and docstring of the test method that called
+        one of the result-generating methods.
+
+        Returns:
+            tuple: Containing the calling function name and its docstring.
+
+        Raises:
+            RuntimeError: If unable to retrieve the calling frame information.
+        """
         if (f := inspect.currentframe()) is None:
             raise RuntimeError("Unable to retrieve the calling frame.")
         if (frame := f.f_back) is None:
@@ -144,23 +245,79 @@ class Suite(abc.ABC):
         return calling_func_name, description
 
     @t.overload
-    def pass_test(self) -> Result: ...
+    def pass_test(self) -> Result:
+        """Create a passing test result with no result value.
+
+        Returns:
+            Result: A Result object with PASSED status and None result value.
+        """
+        ...
 
     @t.overload
-    def pass_test(self, result: t.Any) -> Result: ...
+    def pass_test(self, result: t.Any) -> Result:
+        """Create a passing test result with a result value.
+
+        Args:
+            result: The value to include in the test result.
+
+        Returns:
+            Result: A Result object with PASSED status and the provided result value.
+        """
+        ...
 
     @t.overload
-    def pass_test(self, result: t.Any, message: str) -> Result: ...
+    def pass_test(self, result: t.Any, message: str) -> Result:
+        """Create a passing test result with a result value and message.
+
+        Args:
+            result: The value to include in the test result.
+            message: Message describing why the test passed.
+
+        Returns:
+            Result: A Result object with PASSED status, result value, and message.
+        """
+        ...
 
     @t.overload
-    def pass_test(self, result: t.Any, *, context: t.Any) -> Result: ...
+    def pass_test(self, result: t.Any, *, context: t.Any) -> Result:
+        """Create a passing test result with a result value and context data.
+
+        Args:
+            result: The value to include in the test result.
+            context: Contextual data for the test result.
+
+        Returns:
+            Result: A Result object with PASSED status, result value, and context.
+        """
+        ...
 
     @t.overload
-    def pass_test(self, result: t.Any, message: str, *, context: t.Any) -> Result: ...
+    def pass_test(self, result: t.Any, message: str, *, context: t.Any) -> Result:
+        """Create a passing test result with a result value, message, and context data.
+
+        Args:
+            result: The value to include in the test result.
+            message: Message describing why the test passed.
+            context: Contextual data for the test result.
+
+        Returns:
+            Result: A Result object with PASSED status, result value, message, and context.
+        """
+        ...
 
     def pass_test(
         self, result: t.Any = None, message: t.Optional[str] = None, *, context: t.Optional[t.Any] = None
     ) -> Result:
+        """Create a passing test result.
+
+        Args:
+            result: The value to include in the test result.
+            message: Optional message describing why the test passed.
+            context: Optional contextual data for the test result.
+
+        Returns:
+            Result: A Result object with PASSED status.
+        """
         calling_func_name, description = self._get_caller_info()
 
         return Result(
@@ -174,23 +331,86 @@ class Suite(abc.ABC):
         )
 
     @t.overload
-    def warn_test(self) -> Result: ...
+    def warn_test(self) -> Result:
+        """Create a warning test result with no result value.
+
+        Returns:
+            Result: A Result object with WARNING status (or FAILED if warnings are elevated)
+                   and None result value.
+        """
+        ...
 
     @t.overload
-    def warn_test(self, result: t.Any) -> Result: ...
+    def warn_test(self, result: t.Any) -> Result:
+        """Create a warning test result with a result value.
+
+        Args:
+            result: The value to include in the test result.
+
+        Returns:
+            Result: A Result object with WARNING status (or FAILED if warnings are elevated)
+                   and the provided result value.
+        """
+        ...
 
     @t.overload
-    def warn_test(self, result: t.Any, message: str) -> Result: ...
+    def warn_test(self, result: t.Any, message: str) -> Result:
+        """Create a warning test result with a result value and message.
+
+        Args:
+            result: The value to include in the test result.
+            message: Message describing the warning.
+
+        Returns:
+            Result: A Result object with WARNING status (or FAILED if warnings are elevated),
+                   result value, and message.
+        """
+        ...
 
     @t.overload
-    def warn_test(self, result: t.Any, *, context: t.Any) -> Result: ...
+    def warn_test(self, result: t.Any, *, context: t.Any) -> Result:
+        """Create a warning test result with a result value and context data.
+
+        Args:
+            result: The value to include in the test result.
+            context: Contextual data for the test result.
+
+        Returns:
+            Result: A Result object with WARNING status (or FAILED if warnings are elevated),
+                   result value, and context.
+        """
+        ...
 
     @t.overload
-    def warn_test(self, result: t.Any, message: str, *, context: t.Any) -> Result: ...
+    def warn_test(self, result: t.Any, message: str, *, context: t.Any) -> Result:
+        """Create a warning test result with a result value, message, and context data.
+
+        Args:
+            result: The value to include in the test result.
+            message: Message describing the warning.
+            context: Contextual data for the test result.
+
+        Returns:
+            Result: A Result object with WARNING status (or FAILED if warnings are elevated),
+                   result value, message, and context.
+        """
+        ...
 
     def warn_test(
         self, result: t.Any = None, message: t.Optional[str] = None, *, context: t.Optional[t.Any] = None
     ) -> Result:
+        """Create a warning test result.
+
+        Creates a result with WARNING status, or FAILED if warnings are elevated.
+
+        Args:
+            result: The value to include in the test result.
+            message: Optional message describing the warning.
+            context: Optional contextual data for the test result.
+
+        Returns:
+            Result: A Result object with WARNING or FAILED status.
+        """
         calling_func_name, description = self._get_caller_info()
 
         return Result(
@@ -204,20 +424,66 @@ class Suite(abc.ABC):
         )
 
     @t.overload
-    def fail_test(self) -> Result: ...
+    def fail_test(self) -> Result:
+        """Create a failing test result with no result value.
+
+        Returns:
+            Result: A Result object with FAILED status and None result value.
+        """
+        ...
 
     @t.overload
-    def fail_test(self, result: t.Any) -> Result: ...
+    def fail_test(self, result: t.Any) -> Result:
+        """Create a failing test result with a result value.
+
+        Args:
+            result: The value to include in the test result.
+
+        Returns:
+            Result: A Result object with FAILED status and the provided result value.
+        """
+        ...
 
     @t.overload
-    def fail_test(self, result: t.Any, message: str) -> Result: ...
+    def fail_test(self, result: t.Any, message: str) -> Result:
+        """Create a failing test result with a result value and message.
+
+        Args:
+            result: The value to include in the test result.
+            message: Message describing why the test failed.
+
+        Returns:
+            Result: A Result object with FAILED status, result value, and message.
+        """
+        ...
 
     @t.overload
-    def fail_test(self, result: t.Any, message: str, *, context: t.Any) -> Result: ...
+    def fail_test(self, result: t.Any, message: str, *, context: t.Any) -> Result:
+        """Create a failing test result with a result value, message, and context data.
+
+        Args:
+            result: The value to include in the test result.
+            message: Message describing why the test failed.
+            context: Contextual data for the test result.
+
+        Returns:
+            Result: A Result object with FAILED status, result value, message, and context.
+        """
+        ...
 
     def fail_test(
         self, result: t.Optional[t.Any] = None, message: t.Optional[str] = None, *, context: t.Optional[t.Any] = None
     ) -> Result:
+        """Create a failing test result.
+
+        Args:
+            result: The value to include in the test result.
+            message: Optional message describing why the test failed.
+            context: Optional contextual data for the test result.
+
+        Returns:
+            Result: A Result object with FAILED status.
+        """
         calling_func_name, description = self._get_caller_info()
 
         return Result(
@@ -231,15 +497,54 @@ class Suite(abc.ABC):
         )
 
     @t.overload
-    def skip_test(self) -> Result: ...
+    def skip_test(self) -> Result:
+        """Create a skipped test result with no message.
+
+        Returns:
+            Result: A Result object with SKIPPED status (or FAILED if skips are elevated)
+                   and None result value.
+        """
+        ...
 
     @t.overload
-    def skip_test(self, message: str) -> Result: ...
+    def skip_test(self, message: str) -> Result:
+        """Create a skipped test result with a message.
+
+        Args:
+            message: Message explaining why the test was skipped.
+
+        Returns:
+            Result: A Result object with SKIPPED status (or FAILED if skips are elevated)
+                   and the provided message.
+        """
+        ...
 
     @t.overload
-    def skip_test(self, message: str, *, context: t.Any) -> Result: ...
+    def skip_test(self, message: str, *, context: t.Any) -> Result:
+        """Create a skipped test result with a message and context data.
+
+        Args:
+            message: Message explaining why the test was skipped.
+            context: Contextual data for the test result.
+
+        Returns:
+            Result: A Result object with SKIPPED status (or FAILED if skips are elevated),
+                   message, and context.
+        """
+        ...
 
     def skip_test(self, message: t.Optional[str] = None, *, context: t.Optional[t.Any] = None) -> Result:
+        """Create a skipped test result.
+
+        Creates a result with SKIPPED status, or FAILED if skips are elevated.
+
+        Args:
+            message: Optional message explaining why the test was skipped.
+            context: Optional contextual data for the test result.
+
+        Returns:
+            Result: A Result object with SKIPPED or FAILED status.
+        """
         calling_func_name, description = self._get_caller_info()
         return Result(
             status=Status.SKIPPED if not _elevate_skippable.get() else Status.FAILED,
@@ -252,16 +557,40 @@ class Suite(abc.ABC):
         )
 
     def setup(self) -> None:
-        """Run before each test method."""
+        """Run before each test method.
+
+        This method can be overridden by subclasses to implement
+        setup logic that runs before each test.
+        """
         pass
 
     def teardown(self) -> None:
-        """Run after each test method."""
+        """Run after each test method.
+
+        This method can be overridden by subclasses to implement
+        teardown logic that runs after each test.
+        """
         pass
 
     def _process_test_result(
         self, result: t.Optional[Result], test_method: ITest, test_name: str, description: t.Optional[str]
     ) -> Result:
+        """Process and validate a test result.
+
+        Ensures that the result is properly formatted and contains all necessary information.
+
+        Args:
+            result: The result returned by the test method.
+            test_method: The test method that produced the result.
+            test_name: The name of the test method.
+            description: The description of the test method.
+
+        Returns:
+            Result: A properly formatted Result object.
+
+        Raises:
+            TypeError: If the test method returns something other than a Result object or generator.
+        """
         if result is None and _allow_null_as_pass_ctx.get():
             result = self.pass_test(None, "Test passed with <null> result implicitly.")
 
@@ -285,6 +614,16 @@ class Suite(abc.ABC):
         )
 
     def run_test(self, test_method: ITest) -> t.Generator[Result, None, None]:
+        """Run a single test method and yield its results.
+
+        Handles setup, test execution, result processing, and teardown.
+
+        Args:
+            test_method: The test method to run.
+
+        Yields:
+            Result: Result objects produced by the test method.
+        """
         test_name = test_method.__name__
         suite_name = self.name
         test_description = getattr(test_method, "__doc__", None)
@@ -314,12 +653,32 @@ class Suite(abc.ABC):
             self.teardown()
 
     def run_all(self) -> t.Generator[Result, None, None]:
+        """Run all test methods in the suite.
+
+        Finds all test methods and runs them in sequence.
+
+        Yields:
+            Result: Result objects produced by all test methods.
+        """
         for test in self.get_tests():
             yield from self.run_test(test)
 
 
 @dataclasses.dataclass
 class ResultsStatistics:
+    """Statistics about test results.
+
+    Aggregates counts of test results by status and provides methods for
+    calculating statistics like pass rate.
+
+    Attributes:
+        passed: Number of passed tests.
+        failed: Number of failed tests.
+        error: Number of tests that produced errors.
+        skipped: Number of skipped tests.
+        warnings: Number of tests with warnings.
+    """
+
     passed: int
     failed: int
     error: int
@@ -328,17 +687,43 @@ class ResultsStatistics:
 
     @property
     def total(self) -> int:
+        """Get the total number of tests.
+
+        Returns:
+            int: Sum of all test result counts.
+        """
         return self.passed + self.failed + self.error + self.skipped + self.warnings
 
     @property
     def pass_rate(self) -> float:
+        """Calculate the pass rate.
+
+        Returns:
+            float: Ratio of passed tests to total tests, or 0 if no tests.
+        """
         total = self.total
         return (self.passed / total) if total > 0 else 0.0
 
     def get_status_summary(self) -> str:
+        """Generate a compact string summary of result counts.
+
+        Returns:
+            str: Summary string with counts for each status type.
+        """
         return f"P:{self[Status.PASSED]} F:{self[Status.FAILED]} E:{self[Status.ERROR]} S:{self[Status.SKIPPED]} W:{self[Status.WARNING]}"
 
     def __getitem__(self, item: Status) -> int:
+        """Get the count for a specific status.
+
+        Args:
+            item: The status to get the count for.
+
+        Returns:
+            int: Number of tests with the specified status.
+
+        Raises:
+            KeyError: If an invalid status is provided.
+        """
         if item == Status.PASSED:
             return self.passed
         elif item == Status.FAILED:
@@ -354,6 +739,14 @@ class ResultsStatistics:
 
     @classmethod
     def from_results(cls, results: t.List[Result]) -> "ResultsStatistics":
+        """Create statistics from a list of test results.
+
+        Args:
+            results: List of test results to analyze.
+
+        Returns:
+            ResultsStatistics: Statistics object summarizing the results.
+        """
         stats = {status: sum(1 for r in results if r.status == status) for status in Status}
         return cls(
             passed=stats[Status.PASSED],
@@ -365,15 +758,46 @@ class ResultsStatistics:
 
 
 class Runner:
+    """Test runner for executing suites and reporting results.
+
+    Handles executing test suites, collecting results, and generating reports.
+
+    Attributes:
+        suites: List of test suites to run.
+        _results: Optional list of collected test results.
+    """
+
     def __init__(self, suites: t.Optional[t.List[Suite]] = None):
+        """Initialize the test runner.
+
+        Args:
+            suites: Optional list of test suites to run.
+        """
         self.suites = suites if suites is not None else []
         self._results: t.Optional[t.List[Result]] = None
 
     def add_suite(self, suite: Suite) -> "Runner":
+        """Add a test suite to the runner.
+
+        Args:
+            suite: Test suite to add.
+
+        Returns:
+            Runner: Self for method chaining.
+        """
         self.suites.append(suite)
         return self
 
     def _render_status_bar(self, stats: ResultsStatistics, bar_width: int = 20) -> str:
+        """Render a colored status bar representing test result proportions.
+
+        Args:
+            stats: Statistics to render.
+            bar_width: Width of the status bar in characters.
+
+        Returns:
+            str: Rich-formatted string containing the status bar.
+        """
         total = stats.total
         if total == 0:
             return ""
@@ -398,8 +822,20 @@ class Runner:
         render_traceback: bool = True,
         render_message: bool = True,
     ) -> t.List[Result]:
-        """Run all tests in all suites with a rich progress display and aligned columns."""
+        """Run all tests in all suites with a rich progress display.
 
+        Executes all tests with a visual progress bar and detailed reporting
+        of test outcomes.
+
+        Args:
+            render_context: Whether to render test context in result output.
+            render_description: Whether to render test descriptions in result output.
+            render_traceback: Whether to render tracebacks for errors in result output.
+            render_message: Whether to render test result messages in result output.
+
+        Returns:
+            List[Result]: List of all test results.
+        """
         suite_tests = [(suite, list(suite.get_tests())) for suite in self.suites]
         test_count = sum(len(tests) for _, tests in suite_tests)
 
@@ -483,6 +919,16 @@ class Runner:
         render_traceback: bool = True,
         render_message: bool = True,
     ):
+        """Print detailed test results to the console.
+
+        Args:
+            all_results: List of results to print.
+            include: Set of status types to include in the output.
+            render_context: Whether to render test context.
+            render_description: Whether to render test descriptions.
+            render_traceback: Whether to render tracebacks for errors.
+            render_message: Whether to render test result messages.
+        """
         if all_results:
             included_tests = [r for r in all_results if r.status in include]
             if included_tests:
