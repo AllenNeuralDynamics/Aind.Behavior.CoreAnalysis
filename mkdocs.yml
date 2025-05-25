@@ -4,73 +4,73 @@ site_author: Bruno F. Cruz
 copyright: 2025, Allen Institute for Neural Dynamics
 repo_url: https://github.com/AllenNeuralDynamics/Aind.Behavior.CoreAnalysis
 repo_name: GitHub
-theme: 
+theme:
   name: material
   palette:
-    # Light mode
-    - media: "(prefers-color-scheme: light)"
-      scheme: default
-      primary: white
-      accent: black
-      toggle:
-        icon: material/brightness-7
-        name: Switch to dark mode
-    # Dark mode
-    - media: "(prefers-color-scheme: dark)"
-      scheme: slate
-      primary: black
-      accent: white
-      toggle:
-        icon: material/brightness-4
-        name: Switch to light mode
+  - media: '(prefers-color-scheme: light)'
+    scheme: default
+    primary: white
+    accent: black
+    toggle:
+      icon: material/brightness-7
+      name: Switch to dark mode
+  - media: '(prefers-color-scheme: dark)'
+    scheme: slate
+    primary: black
+    accent: white
+    toggle:
+      icon: material/brightness-4
+      name: Switch to light mode
   features:
-    - content.tabs.link
-    - content.code.annotate
-    - content.code.copy
-    - announce.dismiss
-    - navigation.tabs
-    - navigation.instant
-    - navigation.instant.prefetch
-    - navigation.instant.preview
-    - navigation.instant.progress
-    - navigation.path
-    - navigation.sections
-    - navigation.top
-    - navigation.tracking
-    - search.suggest
-    - toc.follow
-  logo: 'logo.svg'
-  favicon: 'favicon.ico'
-
+  - content.tabs.link
+  - content.code.annotate
+  - content.code.copy
+  - announce.dismiss
+  - navigation.tabs
+  - navigation.instant
+  - navigation.instant.prefetch
+  - navigation.instant.preview
+  - navigation.instant.progress
+  - navigation.path
+  - navigation.sections
+  - navigation.top
+  - navigation.tracking
+  - search.suggest
+  - toc.follow
+  logo: logo.svg
+  favicon: favicon.ico
+hooks:
+- docs/_regenerate_api.py
 plugins:
-  - search
-  - mkdocstrings:
-      default_handler: python
-      handlers:
-        python:
-          options:
-            separate_signature: true
-            filters: ["!^_"]
-            docstring_options:
-              ignore_init_summary: true
-            merge_init_into_class: true
-            show_signature_annotations: true
-            signature_crossrefs: true
-          rendering:
-            show_source: true
-            show_root_heading: true
-          selection:
-            docstring_style: google
-          inventories:
-          - url: https://docs.python.org/3/objects.inv
-            domains: [py, std]
-
+- search
+- mkdocstrings:
+    default_handler: python
+    handlers:
+      python:
+        options:
+          separate_signature: true
+          filters:
+          - '!^_'
+          docstring_options:
+            ignore_init_summary: true
+          merge_init_into_class: true
+          show_signature_annotations: true
+          signature_crossrefs: true
+        rendering:
+          show_source: true
+          show_root_heading: true
+        selection:
+          docstring_style: google
+        inventories:
+        - url: https://docs.python.org/3/objects.inv
+          domains:
+          - py
+          - std
 validation:
   omitted_files: warn
   absolute_links: warn
   unrecognized_links: warn
   anchors: warn
-
 markdown_extensions:
 - tables
 - toc:
@@ -85,20 +85,32 @@ markdown_extensions:
 - pymdownx.tabbed:
     alternate_style: true
 - pymdownx.snippets:
-    base_path: ['.']
-    
+    base_path:
+    - .
 nav:
-  - Home: index.md
-  - API Reference: 
-      - Contract:
-        - core: api/contract/core.md
-        - utils: api/contract/utils.md
-      - Quality Control:
-        - core: api/qc/core.md
-  - Issues: https://github.com/AllenNeuralDynamics/Aind.Behavior.CoreAnalysis/issues
-  - Examples:
-      - Contract: examples/contract.md
-      - Quality Control: examples/qc.md
-
+- Home: index.md
+- API Reference:
+  - api/index.md
+  - Contract:
+    - base: api/contract/base.md
+    - camera: api/contract/camera.md
+    - core: api/contract/core.md
+    - csv: api/contract/csv.md
+    - harp: api/contract/harp.md
+    - json: api/contract/json.md
+    - mux: api/contract/mux.md
+    - text: api/contract/text.md
+    - utils: api/contract/utils.md
+  - Qc:
+    - base: api/qc/base.md
+    - camera: api/qc/camera.md
+    - contract: api/qc/contract.md
+    - core: api/qc/core.md
+    - csv: api/qc/csv.md
+    - harp: api/qc/harp.md
+- Issues: https://github.com/AllenNeuralDynamics/Aind.Behavior.CoreAnalysis/issues
+- Examples:
+  - Contract: examples/contract.md
+  - Quality Control: examples/qc.md
 watch:
 - src/aind_behavior_core_analysis
