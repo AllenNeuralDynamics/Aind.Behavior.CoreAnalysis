@@ -17,6 +17,7 @@ class CsvParams(FilePathBaseParam):
         strict_header: If True, treats the first row as a header. Otherwise, no header is assumed.
         index: Column name to set as the DataFrame index. If None, default numeric indices are used.
     """
+
     delimiter: Optional[str] = None
     strict_header: bool = True
     index: Optional[str] = None

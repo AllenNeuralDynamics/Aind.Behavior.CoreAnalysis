@@ -37,6 +37,8 @@ jobs:
       - name: ruff format
         run: uv run ruff format .
 
+      - name: interrogate
+        run: uv run interrogate
       - name: codespell
         run: uv run codespell --check-filenames
 

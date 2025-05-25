@@ -11,22 +11,23 @@ from aind_behavior_core_analysis import _typing
 
 class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
     """Abstract base class for all data streams.
-    
-    Provides a generic interface for data reading operations with configurable parameters 
+
+    Provides a generic interface for data reading operations with configurable parameters
     and hierarchical organization.
-    
+
     Args:
         name: Name identifier for the data stream.
         description: Optional description of the data stream.
         reader_params: Optional parameters for the data reader.
         **kwargs: Additional keyword arguments.
-        
+
     Attributes:
         _is_collection: Class variable indicating if this is a collection of data streams.
-        
+
     Raises:
         ValueError: If name contains '::' characters which are reserved for path resolution.
     """
+
     _is_collection: ClassVar[bool] = False
 
     def __init__(
@@ -49,7 +50,7 @@ class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
     @property
     def name(self) -> str:
         """Get the name of the data stream.
-        
+
         Returns:
             str: Name identifier of the data stream.
         """
@@ -58,10 +59,10 @@ class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
     @property
     def resolved_name(self) -> str:
         """Get the full hierarchical name of the data stream.
-        
+
         Generates a path-like name showing the stream's position in the hierarchy,
         using '::' as a separator between parent and child names.
-        
+
         Returns:
             str: The fully resolved name including all parent names.
         """
@@ -75,7 +76,7 @@ class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
     @property
     def description(self) -> Optional[str]:
         """Get the description of the data stream.
-        
+
         Returns:
             Optional[str]: Description of the data stream, or None if not provided.
         """
@@ -84,7 +85,7 @@ class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
     @property
     def parent(self) -> Optional["DataStream"]:
         """Get the parent data stream.
-        
+
         Returns:
             Optional[DataStream]: Parent data stream, or None if this is a root stream.
         """
@@ -93,7 +94,7 @@ class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
     @property
     def is_collection(self) -> bool:
         """Check if this data stream is a collection of other streams.
-        
+
         Returns:
             bool: True if this is a collection stream, False otherwise.
         """
@@ -106,7 +107,7 @@ class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
     @property
     def reader_params(self) -> _typing.TReaderParams:
         """Get the parameters for the data reader.
-        
+
         Returns:
             TReaderParams: Parameters for the data reader.
         """
@@ -114,13 +115,13 @@ class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
 
     def read(self, reader_params: Optional[_typing.TReaderParams] = None) -> _typing.TData:
         """Read data using the configured reader.
-        
+
         Args:
             reader_params: Optional parameters to override the default reader parameters.
-            
+
         Returns:
             TData: Data read from the source.
-            
+
         Raises:
             ValueError: If reader parameters are not set.
         """
@@ -131,13 +132,13 @@ class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
 
     def bind_reader_params(self, params: _typing.TReaderParams) -> Self:
         """Bind reader parameters to the data stream.
-        
+
         Args:
             params: Parameters to bind to the data stream's reader.
-            
+
         Returns:
             Self: The data stream instance for method chaining.
-            
+
         Raises:
             ValueError: If reader parameters have already been set.
         """
@@ -148,13 +149,13 @@ class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
 
     def at(self, name: str) -> "DataStream":
         """Get a child data stream by name.
-        
+
         Args:
             name: Name of the child data stream to retrieve.
-            
+
         Returns:
             DataStream: The child data stream with the given name.
-            
+
         Raises:
             NotImplementedError: If the data stream does not support child access.
         """
@@ -162,10 +163,10 @@ class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
 
     def __getitem__(self, name: str) -> "DataStream":
         """Get a child data stream by name using dictionary-like syntax.
-        
+
         Args:
             name: Name of the child data stream to retrieve.
-            
+
         Returns:
             DataStream: The child data stream with the given name.
         """
@@ -174,7 +175,7 @@ class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
     @property
     def has_data(self) -> bool:
         """Check if the data stream has loaded data.
-        
+
         Returns:
             bool: True if data has been loaded, False otherwise.
         """
@@ -183,10 +184,10 @@ class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
     @property
     def data(self) -> _typing.TData:
         """Get the loaded data.
-        
+
         Returns:
             TData: The loaded data.
-            
+
         Raises:
             ValueError: If data has not been loaded yet.
         """
@@ -196,9 +197,9 @@ class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
 
     def load(self) -> Self:
         """Load data into the data stream.
-        
+
         Reads data from the source and stores it in the data stream.
-        
+
         Returns:
             Self: The data stream instance for method chaining.
         """
@@ -207,7 +208,7 @@ class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
 
     def __str__(self):
         """Generate a string representation of the data stream.
-        
+
         Returns:
             str: String representation showing the stream's type, name, description,
                  reader parameters, and data type if loaded.
@@ -223,9 +224,9 @@ class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
 
     def __iter__(self) -> Generator["DataStream", None, None]:
         """Iterator interface for data streams.
-        
+
         For non-collection data streams, this yields nothing.
-        
+
         Yields:
             DataStream: Child data streams (none for base DataStream).
         """
@@ -233,15 +234,15 @@ class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
 
     def load_all(self, strict: bool = False) -> list[tuple["DataStream", Exception], None, None]:
         """Recursively load this data stream and all child streams.
-        
+
         Performs depth-first traversal to load all streams in the hierarchy.
-        
+
         Args:
             strict: If True, raises exceptions immediately; otherwise collects and returns them.
-            
+
         Returns:
             list: List of tuples containing streams and exceptions that occurred during loading.
-            
+
         Raises:
             Exception: If strict is True and an exception occurs during loading.
         """
@@ -267,15 +268,16 @@ class DataStreamCollectionBase(
     Generic[TDataStream, _typing.TReaderParams],
 ):
     """Base class for collections of data streams.
-    
+
     Provides functionality for managing and accessing multiple child data streams.
-    
+
     Args:
         name: Name identifier for the collection.
         description: Optional description of the collection.
         reader_params: Optional parameters for the reader.
         **kwargs: Additional keyword arguments.
     """
+
     _is_collection: ClassVar[bool] = True
 
     def __init__(
@@ -292,9 +294,9 @@ class DataStreamCollectionBase(
 
     def _update_hashmap(self) -> None:
         """Update the internal hashmap of child data streams.
-        
+
         Validates that all child streams have unique names and updates the lookup table.
-        
+
         Raises:
             ValueError: If duplicate names are found among child streams.
         """
@@ -310,7 +312,7 @@ class DataStreamCollectionBase(
 
     def _update_parent_references(self) -> None:
         """Update parent references for all child data streams.
-        
+
         Sets this collection as the parent for all child streams.
         """
         for stream in self._hashmap.values():
@@ -319,12 +321,12 @@ class DataStreamCollectionBase(
     @override
     def load(self):
         """Load data for this collection.
-        
+
         Overrides the base method to add validation that loaded data is a list of DataStreams.
-        
+
         Returns:
             Self: The collection instance for method chaining.
-            
+
         Raises:
             ValueError: If loaded data is not a list of DataStreams.
         """
@@ -338,13 +340,13 @@ class DataStreamCollectionBase(
     @override
     def at(self, name: str) -> TDataStream:
         """Get a child data stream by name.
-        
+
         Args:
             name: Name of the child data stream to retrieve.
-            
+
         Returns:
             TDataStream: The child data stream with the given name.
-            
+
         Raises:
             ValueError: If data has not been loaded yet.
             KeyError: If no child stream with the given name exists.
@@ -358,7 +360,7 @@ class DataStreamCollectionBase(
 
     def __str__(self: Self) -> str:
         """Generate a formatted table representation of the collection.
-        
+
         Returns:
             str: Formatted table showing child streams, their types, and load status.
         """
@@ -389,9 +391,9 @@ class DataStreamCollectionBase(
 
     def __iter__(self) -> Generator[DataStream, None, None]:
         """Iterator for all child data streams, including nested collections.
-        
+
         Implements a depth-first traversal of the stream hierarchy.
-        
+
         Yields:
             DataStream: Child data streams.
         """
@@ -404,15 +406,16 @@ class DataStreamCollectionBase(
 
 class DataStreamCollection(DataStreamCollectionBase[DataStream, _typing.UnsetParamsType]):
     """Collection of data streams with direct initialization.
-    
+
     A specialized collection where child streams are passed directly instead of being
     created by a reader function.
-    
+
     Args:
         name: Name identifier for the collection.
         data_streams: List of child data streams to include.
         description: Optional description of the collection.
     """
+
     @override
     def __init__(
         self,
@@ -432,7 +435,7 @@ class DataStreamCollection(DataStreamCollectionBase[DataStream, _typing.UnsetPar
     @staticmethod
     def parameters(*args, **kwargs) -> _typing.UnsetParamsType:
         """Parameters function to return UnsetParams.
-        
+
         Returns:
             UnsetParamsType: Special unset parameters value.
         """
@@ -440,7 +443,7 @@ class DataStreamCollection(DataStreamCollectionBase[DataStream, _typing.UnsetPar
 
     def _reader(self, *args, **kwargs) -> List[DataStream]:
         """Reader function that returns the pre-set data streams.
-        
+
         Returns:
             List[DataStream]: The pre-set data streams.
         """
@@ -449,10 +452,10 @@ class DataStreamCollection(DataStreamCollectionBase[DataStream, _typing.UnsetPar
     @override
     def read(self, *args, **kwargs) -> List[DataStream]:
         """Read data from the collection.
-        
+
         Returns:
             List[DataStream]: The pre-set data streams.
-            
+
         Raises:
             ValueError: If data streams have not been set yet.
         """
@@ -462,13 +465,13 @@ class DataStreamCollection(DataStreamCollectionBase[DataStream, _typing.UnsetPar
 
     def bind_data_streams(self, data_streams: List[DataStream]) -> Self:
         """Bind a list of data streams to the collection.
-        
+
         Args:
             data_streams: List of data streams to include in the collection.
-            
+
         Returns:
             Self: The collection instance for method chaining.
-            
+
         Raises:
             ValueError: If data streams have already been set.
         """
@@ -480,13 +483,13 @@ class DataStreamCollection(DataStreamCollectionBase[DataStream, _typing.UnsetPar
 
     def add_stream(self, stream: DataStream) -> Self:
         """Add a new data stream to the collection.
-        
+
         Args:
             stream: Data stream to add to the collection.
-            
+
         Returns:
             Self: The collection instance for method chaining.
-            
+
         Raises:
             KeyError: If a stream with the same name already exists.
         """
@@ -504,10 +507,10 @@ class DataStreamCollection(DataStreamCollectionBase[DataStream, _typing.UnsetPar
 
     def remove_stream(self, name: str) -> None:
         """Remove a data stream from the collection.
-        
+
         Args:
             name: Name of the data stream to remove.
-            
+
         Raises:
             ValueError: If data streams have not been set yet.
             KeyError: If no stream with the given name exists.
@@ -524,15 +527,15 @@ class DataStreamCollection(DataStreamCollectionBase[DataStream, _typing.UnsetPar
     @classmethod
     def from_data_stream(cls, data_stream: DataStream) -> Self:
         """Create a DataStreamCollection from a DataStream object.
-        
+
         Factory method to convert a single data stream or collection into a DataStreamCollection.
-        
+
         Args:
             data_stream: Source data stream to convert.
-            
+
         Returns:
             DataStreamCollection: New collection containing the source stream's data.
-            
+
         Raises:
             TypeError: If the source is not a DataStream.
             ValueError: If the source has not been loaded yet.
@@ -547,15 +550,16 @@ class DataStreamCollection(DataStreamCollectionBase[DataStream, _typing.UnsetPar
 
 class Dataset(DataStreamCollection):
     """A version-tracked collection of data streams.
-    
+
     Extends DataStreamCollection by adding semantic versioning support.
-    
+
     Args:
         name: Name identifier for the dataset.
         data_streams: List of data streams to include in the dataset.
         version: Semantic version string or Version object. Defaults to "0.0.0".
         description: Optional description of the dataset.
     """
+
     @override
     def __init__(
         self,
@@ -576,10 +580,10 @@ class Dataset(DataStreamCollection):
     @staticmethod
     def _parse_semver(version: str | Version) -> Version:
         """Parse a version string into a Version object.
-        
+
         Args:
             version: Version string or object to parse.
-            
+
         Returns:
             Version: Semantic version object.
         """
@@ -590,7 +594,7 @@ class Dataset(DataStreamCollection):
     @property
     def version(self) -> Version:
         """Get the semantic version of the dataset.
-        
+
         Returns:
             Version: Semantic version object.
         """
@@ -600,10 +604,11 @@ class Dataset(DataStreamCollection):
 @dataclasses.dataclass
 class FilePathBaseParam(abc.ABC):
     """Abstract base class for file-based reader parameters.
-    
+
     Base parameter class for readers that access files by path.
-    
+
     Attributes:
         path: Path to the file or directory to read from.
     """
+
     path: os.PathLike

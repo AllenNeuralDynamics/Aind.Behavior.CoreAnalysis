@@ -12,13 +12,13 @@ from .base import Suite
 
 class CameraTestSuite(Suite):
     """Test suite for validating camera data integrity.
-    
+
     Provides tests for validating video and metadata integrity according to the AIND
     file format specification for behavior videos.
-    
+
     For more details, see:
     https://github.com/AllenNeuralDynamics/aind-file-standards/blob/ce0aa517a40064d1ac9764d42c9efe4ae5c61f7b/file_formats/behavior_videos.md
-    
+
     Attributes:
         data_stream: The Camera data stream to test.
         expected_fps: Optional expected frames per second for validation.
@@ -39,7 +39,7 @@ class CameraTestSuite(Suite):
         stop_time_s: t.Optional[float] = None,
     ):
         """Initialize the camera test suite.
-        
+
         Args:
             data_stream: The Camera data stream to test.
             expected_fps: Optional expected frames per second for validation.

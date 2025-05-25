@@ -5,15 +5,31 @@ from .base import Suite
 
 
 class ContractTestSuite(Suite):
-    """Materializes the output of DataStream.load_all() into a test suite."""
+    """Test suite for validating data stream loading.
+
+    Converts the output of DataStream.load_all() into a test suite that can report
+    on loading errors and distinguish between true errors and expected/excluded issues.
+
+    Attributes:
+        loading_errors: List of tuples containing the data stream and the exception that occurred.
+        exclude: Optional list of data streams to exclude from error reporting.
+    """
 
     def __init__(
         self, loading_errors: list[tuple[DataStream, Exception]], exclude: t.Optional[list[DataStream]] = None
     ):
+        """Initialize the contract test suite.
+
+        Args:
+            loading_errors: List of tuples containing data streams and their loading errors.
+            exclude: Optional list of data streams to exclude from error reporting.
+                These will be reported as warnings instead of failures.
+        """
         self.loading_errors = loading_errors
         self.exclude = exclude if exclude is not None else []
 
     def test_has_errors_on_load(self):
+        """Check if any non-excluded data streams had loading errors."""
         errors = [(ds, err) for ds, err in self.loading_errors if ds not in self.exclude]
         if errors:
             str_errors = "\n".join([f"{ds.resolved_name}" for ds, _ in errors])
@@ -26,6 +42,7 @@ class ContractTestSuite(Suite):
             return self.pass_test(None, "All DataStreams loaded successfully")
 
     def test_has_excluded_as_warnings(self):
+        """Check if any excluded data streams had loading errors and report as warnings."""
         warnings = [(ds, err) for ds, err in self.loading_errors if ds in self.exclude]
         if warnings:
             return self.warn_test(

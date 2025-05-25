@@ -16,10 +16,10 @@ from .base import Suite
 
 class HarpDeviceTestSuite(Suite):
     """Test suite for generic HARP devices.
-    
+
     Provides a set of standard tests that all HARP devices are expected to pass,
     checking basic functionality and data integrity.
-    
+
     Attributes:
         harp_device: The HarpDevice data stream to test.
         harp_device_commands: Optional HarpDevice data stream with device commands.
@@ -34,7 +34,7 @@ class HarpDeviceTestSuite(Suite):
         min_core_version: t.Optional[str] = None,
     ):
         """Initialize the HARP device test suite.
-        
+
         Args:
             harp_device: The HarpDevice data stream to test.
             harp_device_commands: Optional HarpDevice data stream with command history.
@@ -50,10 +50,10 @@ class HarpDeviceTestSuite(Suite):
     @staticmethod
     def _get_whoami(device: HarpDevice) -> int:
         """Get the WhoAmI identifier of a HARP device.
-        
+
         Args:
             device: The HarpDevice data stream.
-            
+
         Returns:
             int: The WhoAmI value of the device.
         """
@@ -62,13 +62,13 @@ class HarpDeviceTestSuite(Suite):
     @staticmethod
     def _get_last_read(harp_register: HarpRegister) -> t.Optional[pd.DataFrame]:
         """Get the last READ message from a HARP register.
-        
+
         Args:
             harp_register: The HarpRegister data stream.
-            
+
         Returns:
             Optional[pd.DataFrame]: The last READ message, or None if no READ messages exist.
-            
+
         Raises:
             ValueError: If the register does not have loaded data.
         """
@@ -189,10 +189,10 @@ class HarpDeviceTestSuite(Suite):
     @staticmethod
     def _try_parse_semver(version: str) -> t.Optional[semver.Version]:
         """Try to parse a semantic version string.
-        
+
         Args:
             version: The version string to parse.
-            
+
         Returns:
             Optional[semver.Version]: The parsed Version object, or None if parsing fails.
         """
@@ -254,10 +254,10 @@ class HarpDeviceTestSuite(Suite):
 
 class HarpHubTestSuite(Suite):
     """Test suite for a hub of HARP devices.
-    
+
     Tests a collection of HARP devices that share the same clock generator source,
     verifying proper synchronization and configuration.
-    
+
     Attributes:
         clock_generator_device: The HARP device acting as the clock generator.
         devices: List of subordinate HARP devices to test.
@@ -272,7 +272,7 @@ class HarpHubTestSuite(Suite):
         read_dump_jitter_threshold_s: t.Optional[float] = 0.05,
     ):
         """Initialize the HARP hub test suite.
-        
+
         Args:
             clock_generator_device: The HARP device acting as the clock generator.
             devices: List of HARP devices to test as part of the hub.
@@ -306,10 +306,10 @@ class HarpHubTestSuite(Suite):
     @staticmethod
     def _get_read_dump_time(device: HarpDevice) -> t.Optional[float]:
         """Get the timestamp of the last read dump for a device.
-        
+
         Args:
             device: The HARP device to check.
-            
+
         Returns:
             Optional[float]: The timestamp of the last read dump, or None if no read dump exists.
         """
@@ -342,10 +342,10 @@ class HarpHubTestSuite(Suite):
 
 class HarpDeviceTypeTestSuite(Suite, abc.ABC):
     """Base test suite for specific types of HARP devices.
-    
+
     Abstract base class providing common functionality for testing
     specific HARP device types with known WhoAmI identifiers.
-    
+
     Attributes:
         harp_device: The HARP device to test.
         _WHOAMI: Class variable defining the expected WhoAmI value for this device type.
@@ -355,7 +355,7 @@ class HarpDeviceTypeTestSuite(Suite, abc.ABC):
 
     def __init__(self, harp_device: HarpDevice):
         """Initialize the device type test suite.
-        
+
         Args:
             harp_device: The HARP device to test.
         """
@@ -364,7 +364,7 @@ class HarpDeviceTypeTestSuite(Suite, abc.ABC):
     @property
     def whoami(self) -> int:
         """Get the expected WhoAmI value for this device type.
-        
+
         Returns:
             int: The expected WhoAmI identifier.
         """
@@ -383,10 +383,10 @@ class HarpDeviceTypeTestSuite(Suite, abc.ABC):
 
 class HarpSniffDetectorTestSuite(HarpDeviceTypeTestSuite):
     """Test suite for HARP Sniff Detector devices.
-    
+
     Provides tests specific to the Sniff Detector device, including
     signal quality analysis and breathing rate detection.
-    
+
     Attributes:
         harp_device: The HARP Sniff Detector device to test.
         data: The raw voltage data from the device.
@@ -397,6 +397,7 @@ class HarpSniffDetectorTestSuite(HarpDeviceTypeTestSuite):
         sudden_jumps_thr: Threshold for the sudden jumps detection test.
         notch_filter_freq: Frequency (Hz) for the notch filter.
     """
+
     _WHOAMI = 1401
     _FULL_BIT_DEPTH = 2**12
 
@@ -411,7 +412,7 @@ class HarpSniffDetectorTestSuite(HarpDeviceTypeTestSuite):
         notch_filter_freq=50,
     ):
         """Initialize the Sniff Detector test suite.
-        
+
         Args:
             harp_device: The HARP Sniff Detector device to test.
             quantization_ratio_thr: Threshold for the quantization ratio test. Defaults to 0.1.
@@ -443,6 +444,7 @@ class HarpSniffDetectorTestSuite(HarpDeviceTypeTestSuite):
         return self.pass_test(dfps, f"Sampling rate is {dfps:.2f} Hz. Expected {self.fs} Hz")
 
     def test_sniff_detector_signal_quality(self):
+        """Tests the quality of the sniff detector signal by analyzing quantization, clustering, clipping, and sudden jumps."""
         metrics = {}
         TOTAL_SAMPLES = len(self.data)
 
