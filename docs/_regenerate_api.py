@@ -5,13 +5,14 @@ based on the current state of the library.
 """
 
 import logging
+import shutil
 from pathlib import Path
 
 import yaml
 
 # Constants
 ROOT_DIR = Path(__file__).parent.parent
-PACKAGE_NAME = "aind_behavior_core_analysis"
+PACKAGE_NAME = "contraqctor"
 SRC_DIR = ROOT_DIR / "src" / f"{PACKAGE_NAME}"
 DOCS_DIR = ROOT_DIR / "docs"
 API_DIR = DOCS_DIR / "api"
@@ -20,12 +21,29 @@ API_LABEL = "API Reference"
 
 # Leaving this manual for now.
 DOCUMENTED_MODULES = ["contract", "qc"]
-
+TO_COPY = ["assets", "examples", "LICENSE"]
 log = logging.getLogger("mkdocs")
 
 
 def on_pre_build(config):
     """Mkdocs pre-build hook."""
+    for file_or_dir in TO_COPY:
+        src = ROOT_DIR / file_or_dir
+        dest = DOCS_DIR / file_or_dir
+        if src.exists():
+            log.info(f"Copying {file_or_dir} to docs...")
+
+            if src.is_file():
+                print(f"Copying file {src} to {dest}")
+                shutil.copy(src, dest)
+            else:
+                if dest.exists():
+                    shutil.rmtree(dest)
+                shutil.copytree(src, dest)
+            log.info(f"{file_or_dir} copied successfully.")
+        else:
+            log.warning(f"Source: {file_or_dir} not found, skipping.")
+
     main()
 
 

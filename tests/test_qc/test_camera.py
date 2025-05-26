@@ -7,8 +7,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from aind_behavior_core_analysis.qc.base import Status
-from aind_behavior_core_analysis.qc.camera import CameraTestSuite
+from contraqctor.qc.base import Status
+from contraqctor.qc.camera import CameraTestSuite
 
 
 class MockCameraData:

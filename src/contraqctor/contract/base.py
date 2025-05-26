@@ -6,7 +6,7 @@ from typing import Any, ClassVar, Dict, Generator, Generic, List, Optional, Self
 from semver import Version
 from typing_extensions import override
 
-from aind_behavior_core_analysis import _typing
+from contraqctor import _typing
 
 
 class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):

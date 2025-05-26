@@ -43,7 +43,7 @@ jobs:
         run: uv run codespell --check-filenames
 
       - name: pytest
-        run: uv run pytest --cov aind_behavior_core_analysis
+        run: uv run pytest --cov contraqctor
 
       - name: Build
         run: uv build

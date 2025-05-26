@@ -1,6 +1,6 @@
 # Contract Examples
 
-This page demonstrates how to use the Contract module in AIND Behavior Core Analysis.
+This page demonstrates how to use the Contract module.
 
 ## Example Code
 

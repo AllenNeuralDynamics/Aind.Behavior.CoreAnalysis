@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from aind_behavior_core_analysis.qc.base import (
+from contraqctor.qc.base import (
     ResultsStatistics,
     Runner,
     Status,
@@ -72,7 +72,7 @@ class TestIntegration:
 
         with patch.object(runner, "print_results"):
             grouped_results = runner.run_all_with_progress()
-            
+
             assert "TestDevices" in grouped_results
             results = grouped_results["TestDevices"]
 
@@ -88,7 +88,7 @@ class TestIntegration:
 
         with patch.object(runner, "print_results"):
             grouped_results = runner.run_all_with_progress()
-            
+
             results = grouped_results[None]
 
             stats = ResultsStatistics.from_results(results)
@@ -119,21 +119,21 @@ class TestIntegration:
         """Test running suites in multiple groups."""
         valid_suite = ExampleBoardTestSuite(mock_device)
         invalid_suite = ExampleBoardTestSuite(invalid_device)
-        
+
         runner = Runner()
         runner.add_suite(valid_suite, "ValidDevices")
         runner.add_suite(invalid_suite, "InvalidDevices")
-        
+
         with patch.object(runner, "print_results"):
             grouped_results = runner.run_all_with_progress()
-            
+
             assert "ValidDevices" in grouped_results
             assert "InvalidDevices" in grouped_results
-            
+
             valid_stats = ResultsStatistics.from_results(grouped_results["ValidDevices"])
             assert valid_stats[Status.PASSED] == 4
             assert valid_stats[Status.ERROR] == 1
-            
+
             invalid_stats = ResultsStatistics.from_results(grouped_results["InvalidDevices"])
             assert invalid_stats[Status.PASSED] == 2
             assert invalid_stats[Status.FAILED] == 2

@@ -1,8 +1,8 @@
 import pytest
 
-from aind_behavior_core_analysis.contract.base import DataStream
-from aind_behavior_core_analysis.qc.base import Status
-from aind_behavior_core_analysis.qc.contract import ContractTestSuite
+from contraqctor.contract.base import DataStream
+from contraqctor.qc.base import Status
+from contraqctor.qc.contract import ContractTestSuite
 
 
 class MockDataStream(DataStream):

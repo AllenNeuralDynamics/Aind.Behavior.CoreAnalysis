@@ -405,11 +405,11 @@ class HarpSniffDetectorTestSuite(HarpDeviceTypeTestSuite):
     def __init__(
         self,
         harp_device: HarpDevice,
-        quantization_ratio_thr=0.1,
-        clustering_thr=0.05,
-        clipping_thr=0.05,
-        sudden_jumps_thr=0.001,
-        notch_filter_freq=50,
+        quantization_ratio_thr: float = 0.1,
+        clustering_thr: float = 0.05,
+        clipping_thr: float = 0.05,
+        sudden_jumps_thr: float = 0.001,
+        notch_filter_freq: float = 50,
     ):
         """Initialize the Sniff Detector test suite.
 

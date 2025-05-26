@@ -2,7 +2,7 @@ import json
 
 import pandas as pd
 
-from aind_behavior_core_analysis.contract.json import (
+from contraqctor.contract.json import (
     Json,
     JsonParams,
     ManyPydanticModel,

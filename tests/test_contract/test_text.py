@@ -1,6 +1,6 @@
 import pytest
 
-from aind_behavior_core_analysis.contract.text import Text, TextParams
+from contraqctor.contract.text import Text, TextParams
 
 
 class TestText:

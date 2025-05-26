@@ -4,17 +4,17 @@ from aind_behavior_services.rig import AindBehaviorRigModel
 from aind_behavior_services.session import AindBehaviorSessionModel
 from aind_behavior_services.task_logic import AindBehaviorTaskLogicModel
 
-from aind_behavior_core_analysis.contract import Dataset, DataStreamCollection
-from aind_behavior_core_analysis.contract.camera import Camera
-from aind_behavior_core_analysis.contract.csv import Csv
-from aind_behavior_core_analysis.contract.harp import (
+from contraqctor.contract import Dataset, DataStreamCollection
+from contraqctor.contract.camera import Camera
+from contraqctor.contract.csv import Csv
+from contraqctor.contract.harp import (
     DeviceYmlByFile,
     HarpDevice,
 )
-from aind_behavior_core_analysis.contract.json import PydanticModel, SoftwareEvents
-from aind_behavior_core_analysis.contract.mux import MapFromPaths
-from aind_behavior_core_analysis.contract.text import Text
-from aind_behavior_core_analysis.contract.utils import print_data_stream_tree
+from contraqctor.contract.json import PydanticModel, SoftwareEvents
+from contraqctor.contract.mux import MapFromPaths
+from contraqctor.contract.text import Text
+from contraqctor.contract.utils import print_data_stream_tree
 
 dataset_root = Path(r"path_to_data")
 my_dataset = Dataset(

@@ -1,6 +1,6 @@
 # Quality Control Examples
 
-This page demonstrates how to use the Quality Control (QC) module in AIND Behavior Core Analysis.
+This page demonstrates how to use the Quality Control (qc) module.
 
 ## Example Code
 

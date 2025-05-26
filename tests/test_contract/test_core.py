@@ -1,7 +1,7 @@
 import pytest
 
-from aind_behavior_core_analysis import _typing
-from aind_behavior_core_analysis.contract.base import DataStreamCollection
+from contraqctor import _typing
+from contraqctor.contract.base import DataStreamCollection
 
 from .conftest import SimpleDataStream, SimpleParams
 

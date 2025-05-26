@@ -147,7 +147,7 @@ class Result(t.Generic[TResult]):
     traceback: t.Optional[str] = dataclasses.field(default=None, repr=False)
 
 
-def implicit_pass(func):
+def implicit_pass(func: t.Callable[..., t.Any]) -> t.Callable[..., Result]:
     """Decorator to automatically convert non-Result return values to passing results.
 
     If a test method returns something other than a Result object, this decorator
@@ -164,7 +164,7 @@ def implicit_pass(func):
     """
 
     @functools.wraps(func)
-    def wrapper(self, *args, **kwargs):
+    def wrapper(self: Suite, *args: t.Any, **kwargs: t.Any) -> Result:
         """Wrapper function to ensure the decorated function returns a Result."""
         result = func(self, *args, **kwargs)
 
