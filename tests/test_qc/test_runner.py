@@ -100,7 +100,7 @@ class TestRunner:
         runner = Runner()
         suite1 = MockSuite()
         suite2 = MockSuite()
-        
+
         runner.add_suite(suite1)  # Default group (None)
         runner.add_suite(suite2, group="TestGroup")
 
@@ -109,7 +109,7 @@ class TestRunner:
 
             assert None in grouped_results
             assert "TestGroup" in grouped_results
-            
+
             assert len(grouped_results[None]) == 6  # All tests in MockSuite
             assert len(grouped_results["TestGroup"]) == 6  # All tests in MockSuite
 

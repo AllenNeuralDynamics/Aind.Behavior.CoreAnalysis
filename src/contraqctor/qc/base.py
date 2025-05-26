@@ -146,6 +146,7 @@ class Result(t.Generic[TResult]):
     exception: t.Optional[Exception] = dataclasses.field(default=None, repr=False)
     traceback: t.Optional[str] = dataclasses.field(default=None, repr=False)
 
+
 def implicit_pass(func: t.Callable[..., t.Any]) -> t.Callable[..., Result]:
     """Decorator to automatically convert non-Result return values to passing results.
 

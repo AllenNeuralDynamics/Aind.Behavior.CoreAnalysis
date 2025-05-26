@@ -5,10 +5,10 @@ based on the current state of the library.
 """
 
 import logging
+import shutil
 from pathlib import Path
 
 import yaml
-import shutil
 
 # Constants
 ROOT_DIR = Path(__file__).parent.parent
