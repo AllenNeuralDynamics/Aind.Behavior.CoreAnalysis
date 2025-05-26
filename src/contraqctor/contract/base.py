@@ -390,18 +390,28 @@ class DataStreamCollectionBase(
         return table_str
 
     def __iter__(self) -> Generator[DataStream, None, None]:
+        """Iterator for child data streams.
+
+        Yields:
+            DataStream: Child data streams.
+
+        """
+        for value in self._hashmap.values():
+            yield value
+
+    def iter_all(self) -> Generator[DataStream, None, None]:
         """Iterator for all child data streams, including nested collections.
 
         Implements a depth-first traversal of the stream hierarchy.
 
         Yields:
-            DataStream: Child data streams.
+            DataStream: All recursively yielded child data streams.
         """
-        for value in self._hashmap.values():
+        for value in self:
             if isinstance(value, DataStream):
                 yield value
             if isinstance(value, DataStreamCollectionBase):
-                yield from value.__iter__()
+                yield from value.iter_all()
 
 
 class DataStreamCollection(DataStreamCollectionBase[DataStream, _typing.UnsetParamsType]):

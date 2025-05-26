@@ -174,10 +174,16 @@ class TestDataStreamCollection:
 
         outer_collection = DataStreamCollection(name="outer", data_streams=[stream1, inner_collection])
 
-        streams = [x for x in outer_collection]
+        streams = [x for x in outer_collection.iter_all()]
         assert len(streams) == 3  # stream1, stream2, and inner_collection
         assert stream1 in streams
         assert stream2 in streams
+        assert inner_collection in streams
+
+        streams = [x for x in outer_collection]
+        assert len(streams) == 2  # stream1, inner_collection
+        assert stream1 in streams
+        assert stream2 not in streams
         assert inner_collection in streams
 
     def test_duplicate_names(self, text_file):
