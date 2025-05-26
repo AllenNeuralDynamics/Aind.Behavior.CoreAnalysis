@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from aind_behavior_core_analysis.qc.base import (
+from contraqctor.qc.base import (
     ResultsStatistics,
     Runner,
     Status,

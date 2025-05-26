@@ -1,6 +1,6 @@
 import pytest
 
-from aind_behavior_core_analysis.qc.base import (
+from contraqctor.qc.base import (
     Status,
     Suite,
     allow_null_as_pass,

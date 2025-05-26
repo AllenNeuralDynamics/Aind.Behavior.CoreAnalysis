@@ -11,7 +11,7 @@ import yaml
 
 # Constants
 ROOT_DIR = Path(__file__).parent.parent
-PACKAGE_NAME = "aind_behavior_core_analysis"
+PACKAGE_NAME = "contraqctor"
 SRC_DIR = ROOT_DIR / "src" / f"{PACKAGE_NAME}"
 DOCS_DIR = ROOT_DIR / "docs"
 API_DIR = DOCS_DIR / "api"

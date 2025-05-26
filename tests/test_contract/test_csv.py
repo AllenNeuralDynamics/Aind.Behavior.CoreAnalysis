@@ -1,6 +1,6 @@
 import pandas as pd
 
-from aind_behavior_core_analysis.contract.csv import Csv, CsvParams
+from contraqctor.contract.csv import Csv, CsvParams
 
 
 class TestCsv:

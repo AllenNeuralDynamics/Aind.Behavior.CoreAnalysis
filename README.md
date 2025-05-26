@@ -1,7 +1,7 @@
-# aind-behavior-core-analysis
+# contraqctor
 [![Documentation](https://tinyurl.com/bdd8prh7)](https://allenneuraldynamics.github.io/Aind.Behavior.CoreAnalysis/)
 ![CI](https://github.com/AllenNeuralDynamics/Aind.Behavior.CoreAnalysis/actions/workflows/ci.yml/badge.svg)
-[![PyPI - Version](https://img.shields.io/pypi/v/aind-behavior-core-analysis)](https://pypi.org/project/aind-behavior-core-analysis/)
+[![PyPI - Version](https://img.shields.io/pypi/v/contraqctor)](https://pypi.org/project/contraqctor/)
 [![License](https://img.shields.io/badge/license-MIT-brightgreen)](LICENSE)
 [![ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
@@ -24,7 +24,7 @@ pip install .
 Otherwise, you can use pip:
 
 ```bash
-pip install aind-behavior-core-analysis
+pip install contraqctor
 ```
 
 ## Getting started and API usage
@@ -37,9 +37,9 @@ Data contracts provide a standard way to access and load data from various sourc
 
 ```python
 from pathlib import Path
-from aind_behavior_core_analysis.contract import Dataset, DataStreamCollection
-from aind_behavior_core_analysis.contract.csv import Csv
-from aind_behavior_core_analysis.contract.text import Text
+from contraqctor.contract import Dataset, DataStreamCollection
+from contraqctor.contract.csv import Csv
+from contraqctor.contract.text import Text
 
 # Define the dataset structure
 dataset_root = Path("path/to/dataset")
@@ -84,7 +84,7 @@ my_dataset.load_all()
 The QC module helps validate your data to ensure it meets specific requirements:
 
 ```python
-import aind_behavior_core_analysis.qc as qc
+import contraqctor.qc as qc
 
 # Using the dataset created above
 data_stream = my_dataset["Behavior"]["Position"]

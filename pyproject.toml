@@ -3,7 +3,7 @@ requires = ["setuptools", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "aind-behavior-core-analysis"
+name = "contraqctor"
 description = "A library with core primitives for analysis shared across all `Aind.Behavior` tasks"
 authors = [
     { name = "Bruno Cruz", email = "bruno.cruz@alleninstitute.org" },
@@ -62,7 +62,7 @@ docs = [
 where = ["src"]
 
 [tool.setuptools.dynamic]
-version = {attr = "aind_behavior_core_analysis.__version__"}
+version = {attr = "contraqctor.__version__"}
 readme = { file = "README.md", content-type = "text/markdown" }
 
 [tool.setuptools.package-data]

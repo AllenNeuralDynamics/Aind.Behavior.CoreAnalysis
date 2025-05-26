@@ -6,8 +6,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from aind_behavior_core_analysis.qc.base import Status
-from aind_behavior_core_analysis.qc.harp import HarpSniffDetectorTestSuite
+from contraqctor.qc.base import Status
+from contraqctor.qc.harp import HarpSniffDetectorTestSuite
 
 
 class MockHarpRegister:

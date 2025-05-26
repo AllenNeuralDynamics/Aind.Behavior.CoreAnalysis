@@ -1,6 +1,6 @@
 # API Reference
 
-The `aind-behavior-core-analysis` package provides core primitives and utilities for behavioral data analysis.
+The `contraqctor` package provides core primitives and utilities for behavioral data analysis.
 
 ## Modules
 

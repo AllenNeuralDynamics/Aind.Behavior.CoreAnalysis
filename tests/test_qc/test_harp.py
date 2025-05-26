@@ -6,8 +6,8 @@ import pandas as pd
 import pytest
 import semver
 
-from aind_behavior_core_analysis.qc.base import Status
-from aind_behavior_core_analysis.qc.harp import HarpDeviceTestSuite, HarpHubTestSuite
+from contraqctor.qc.base import Status
+from contraqctor.qc.harp import HarpDeviceTestSuite, HarpHubTestSuite
 
 
 # Mock classes

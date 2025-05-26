@@ -5,8 +5,8 @@ from unittest.mock import Mock
 import pandas as pd
 import pytest
 
-from aind_behavior_core_analysis.qc.base import Status
-from aind_behavior_core_analysis.qc.csv import CsvTestSuite
+from contraqctor.qc.base import Status
+from contraqctor.qc.csv import CsvTestSuite
 
 
 class MockCsvStream:

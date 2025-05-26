@@ -1,8 +1,8 @@
 from contract import my_dataset
 
-import aind_behavior_core_analysis.qc as qc
-from aind_behavior_core_analysis.contract.csv import Csv
-from aind_behavior_core_analysis.contract.harp import HarpDevice
+import contraqctor.qc as qc
+from contraqctor.contract.csv import Csv
+from contraqctor.contract.harp import HarpDevice
 
 harp_behavior: HarpDevice = my_dataset["Behavior"]["HarpBehavior"]
 harp_sniff_detector: HarpDevice = my_dataset["Behavior"]["HarpSniffDetector"]

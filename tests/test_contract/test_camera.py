@@ -4,7 +4,7 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
-from aind_behavior_core_analysis.contract.camera import (
+from contraqctor.contract.camera import (
     CAP_PROP_FRAME_COUNT,
     CAP_PROP_FRAME_HEIGHT,
     CAP_PROP_FRAME_WIDTH,
@@ -42,7 +42,7 @@ class TestCamera:
         """Test reading camera data."""
         camera_stream = Camera(name="test", reader_params=CameraParams(path=mock_camera_dir))
 
-        with patch("aind_behavior_core_analysis.contract.camera.VideoCapture") as mock_video:
+        with patch("contraqctor.contract.camera.VideoCapture") as mock_video:
             # Mock video properties
             mock_instance = mock_video.return_value
             mock_instance.get.side_effect = lambda prop: {
@@ -64,7 +64,7 @@ class TestCamera:
         """Test loading camera data."""
         camera_stream = Camera(name="test", reader_params=CameraParams(path=mock_camera_dir))
 
-        with patch("aind_behavior_core_analysis.contract.camera.VideoCapture"):
+        with patch("contraqctor.contract.camera.VideoCapture"):
             camera_stream.load()
 
             assert camera_stream.has_data
@@ -128,7 +128,7 @@ class TestCameraData:
 
         data = CameraData(metadata=metadata, video_path=mock_camera_dir / "video.avi")
 
-        with patch("aind_behavior_core_analysis.contract.camera.VideoCapture") as mock_video:
+        with patch("contraqctor.contract.camera.VideoCapture") as mock_video:
             mock_instance = mock_video.return_value
             mock_instance.get.side_effect = lambda prop: 30 if prop == CAP_PROP_FRAME_COUNT else 0
 
@@ -147,7 +147,7 @@ class TestCameraData:
 
         data = CameraData(metadata=metadata, video_path=mock_camera_dir / "video.avi")
 
-        with patch("aind_behavior_core_analysis.contract.camera.VideoCapture") as mock_video:
+        with patch("contraqctor.contract.camera.VideoCapture") as mock_video:
             mock_instance = mock_video.return_value
             mock_instance.get.side_effect = lambda prop: {
                 CAP_PROP_FRAME_WIDTH: 640,

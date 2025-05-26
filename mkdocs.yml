@@ -1,5 +1,5 @@
-site_name: aind-behavior-core-analysis
-site_description: Documentation for the aind-behavior-core-analysis python package.
+site_name: contraqctor
+site_description: Documentation for the contraqctor python package.
 site_author: Bruno F. Cruz
 copyright: 2025, Allen Institute for Neural Dynamics
 repo_url: https://github.com/AllenNeuralDynamics/Aind.Behavior.CoreAnalysis
@@ -117,4 +117,4 @@ nav:
   - Contract: examples/contract.md
   - Quality Control: examples/qc.md
 watch:
-- src/aind_behavior_core_analysis
+- src/contraqctor
