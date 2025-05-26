@@ -112,7 +112,7 @@ nav:
     - harp: api/qc/harp.md
 - Issues: https://github.com/AllenNeuralDynamics/Aind.Behavior.CoreAnalysis/issues
 - Examples:
-  - Contract: examples/contract.md
-  - Quality Control: examples/qc.md
+  - Contract: doc_examples/contract.md
+  - Quality Control: doc_examples/qc.md
 watch:
 - src/contraqctor
