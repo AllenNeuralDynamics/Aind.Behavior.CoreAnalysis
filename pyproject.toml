@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "contraqctor"
-description = "A library with core primitives for analysis shared across all `Aind.Behavior` tasks"
+description = "A library for managing data contracts and quality control in behavioral datasets."
 authors = [
     { name = "Bruno Cruz", email = "bruno.cruz@alleninstitute.org" },
 ]
@@ -33,10 +33,10 @@ dependencies = [
 ]
 
 [project.urls]
-Documentation = "https://allenneuraldynamics.github.io/Aind.Behavior.CoreAnalysis/"
-Repository = "https://github.com/AllenNeuralDynamics/Aind.Behavior.CoreAnalysis/"
-Issues = "https://github.com/AllenNeuralDynamics/Aind.Behavior.CoreAnalysis/issues"
-Changelog = "https://github.com/AllenNeuralDynamics/Aind.Behavior.CoreAnalysis/releases"
+Documentation = "https://allenneuraldynamics.github.io/contraqctor/"
+Repository = "https://github.com/AllenNeuralDynamics/contraqctor/"
+Issues = "https://github.com/AllenNeuralDynamics/contraqctor/issues"
+Changelog = "https://github.com/AllenNeuralDynamics/contraqctor/releases"
 
 
 [project.optional-dependencies]

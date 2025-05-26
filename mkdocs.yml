@@ -2,7 +2,7 @@ site_name: contraqctor
 site_description: Documentation for the contraqctor python package.
 site_author: Bruno F. Cruz
 copyright: 2025, Allen Institute for Neural Dynamics
-repo_url: https://github.com/AllenNeuralDynamics/Aind.Behavior.CoreAnalysis
+repo_url: https://github.com/AllenNeuralDynamics/contraqctor
 repo_name: GitHub
 theme:
   name: material
@@ -110,7 +110,7 @@ nav:
     - core: api/qc/core.md
     - csv: api/qc/csv.md
     - harp: api/qc/harp.md
-- Issues: https://github.com/AllenNeuralDynamics/Aind.Behavior.CoreAnalysis/issues
+- Issues: https://github.com/AllenNeuralDynamics/contraqctor/issues
 - Examples:
   - Contract: doc_examples/contract.md
   - Quality Control: doc_examples/qc.md
