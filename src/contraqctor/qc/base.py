@@ -786,6 +786,18 @@ class Runner:
         """
         ...
 
+    @t.overload
+    def add_suite(self, suite: Suite, group: str) -> t.Self:
+        """Add a test suite to the runner.
+
+        Args:
+            suite: Test suite to add.
+            group: Group name for organizing suites.
+
+        Returns:
+            Runner: Self for method chaining.
+        """
+
     def add_suite(self, suite: Suite, group: t.Optional[str] = None) -> t.Self:
         """Add a test suite to the runner.
 
