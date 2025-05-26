@@ -763,21 +763,20 @@ class Runner:
     Handles executing test suites, collecting results, and generating reports.
 
     Attributes:
-        suites: List of test suites to run.
-        _results: Optional list of collected test results.
+        suites: Dictionary mapping group names to lists of test suites.
+        _results: Optional dictionary of collected test results by group.
     """
 
-    def __init__(self, suites: t.Optional[t.List[Suite]] = None):
-        """Initialize the test runner.
+    _DEFAULT_TEST_GROUP = "Ungrouped"
 
-        Args:
-            suites: Optional list of test suites to run.
-        """
-        self.suites = suites if suites is not None else []
-        self._results: t.Optional[t.List[Result]] = None
+    def __init__(self):
+        """Initialize the test runner."""
+        self.suites: t.Dict[t.Optional[str], t.List[Suite]] = {}
+        self._results: t.Optional[t.Dict[t.Optional[str], t.List[Result]]] = None
 
-    def add_suite(self, suite: Suite) -> "Runner":
-        """Add a test suite to the runner.
+    @t.overload
+    def add_suite(self, suite: Suite) -> t.Self:
+        """Add a test suite to the runner without specifying a group.
 
         Args:
             suite: Test suite to add.
@@ -785,8 +784,47 @@ class Runner:
         Returns:
             Runner: Self for method chaining.
         """
-        self.suites.append(suite)
+        ...
+
+    def add_suite(self, suite: Suite, group: t.Optional[str] = None) -> t.Self:
+        """Add a test suite to the runner.
+
+        Args:
+            suite: Test suite to add.
+            group: Optional group name for organizing suites. Defaults to None.
+
+        Returns:
+            Runner: Self for method chaining.
+        """
+        self._update_suites(suite, group)
         return self
+
+    def _update_suites(self, suite: Suite, group: t.Optional[str] = None) -> t.Self:
+        """Add a suite to the specified group.
+
+        Args:
+            suite: Test suite to add.
+            group: Optional group name. If None, uses the default group.
+
+        Returns:
+            Runner: Self for method chaining.
+        """
+        if group in self.suites:
+            self.suites[group].append(suite)
+        else:
+            self.suites[group] = [suite]
+        return self
+
+    def _collect_suites(self) -> t.Dict[t.Optional[str], t.List[t.Tuple[Suite, t.List[ITest]]]]:
+        """Collect all suites and their test methods.
+
+        Returns:
+            Dict mapping group names to lists of (suite, tests) tuples.
+        """
+        grouped_suites: t.Dict[t.Optional[str], t.List[t.Tuple[Suite, t.List[ITest]]]] = {}
+        for group, suites in self.suites.items():
+            grouped_suites[group] = [(suite, list(suite.get_tests())) for suite in suites]
+        return grouped_suites
 
     def _render_status_bar(self, stats: ResultsStatistics, bar_width: int = 20) -> str:
         """Render a colored status bar representing test result proportions.
@@ -814,6 +852,99 @@ class Runner:
 
         return status_bar
 
+    def _setup_progress_display(self, suite_name_width: int, test_name_width: int = 20) -> t.List:
+        """Configure the progress display format.
+
+        Creates a list of components for the rich progress display with proper spacing
+        and column widths.
+
+        Args:
+            suite_name_width: Width to allocate for suite names.
+            test_name_width: Width to allocate for test names.
+
+        Returns:
+            List of progress display format components.
+        """
+        return [
+            f"[progress.description]{{task.description:<{suite_name_width + test_name_width + 5}}}",
+            rich.progress.BarColumn(),
+            "[progress.percentage]{task.percentage:>3.0f}%",
+            "•",
+            rich.progress.TimeElapsedColumn(),
+        ]
+
+    def _run_suite_tests(
+        self,
+        progress: rich.progress.Progress,
+        suite: Suite,
+        tests: t.List[ITest],
+        suite_name_width: int,
+        test_name_width: int,
+        total_task: rich.progress.TaskID,
+        group_task: rich.progress.TaskID,
+    ) -> t.List[Result]:
+        """Run all tests for a specific suite with progress reporting.
+
+        Args:
+            progress: Progress display instance.
+            suite: Test suite to run.
+            tests: List of test methods to run.
+            suite_name_width: Width allocated for suite names.
+            test_name_width: Width allocated for test names.
+            total_task: Task ID for the overall progress bar.
+            group_task: Task ID for the group progress bar.
+
+        Returns:
+            List of test results.
+        """
+        suite_name = suite.name
+        suite_task = progress.add_task(f"[cyan]{suite_name}".ljust(suite_name_width + 5), total=len(tests))
+        suite_results = []
+
+        for test in tests:
+            test_name = test.__name__
+            test_desc = f"[cyan]{suite_name:<{suite_name_width}} • {test_name:<{test_name_width}}"
+            progress.update(suite_task, description=test_desc)
+
+            test_results = list(suite.run_test(test))
+            suite_results.extend(test_results)
+
+            progress.advance(total_task)
+            progress.advance(group_task)
+            progress.advance(suite_task)
+
+        if tests:
+            self._update_suite_progress(progress, suite_task, suite_name, suite_results, suite_name_width)
+
+        return suite_results
+
+    def _update_suite_progress(
+        self,
+        progress: rich.progress.Progress,
+        suite_task: rich.progress.TaskID,
+        suite_name: str,
+        suite_results: t.List[Result],
+        suite_name_width: int,
+        bar_width: int = 20,
+    ) -> None:
+        """Update progress display with suite results summary.
+
+        Calculates statistics for a suite's test results and updates the progress
+        display with a visual status bar and summary statistics.
+
+        Args:
+            progress: Progress display instance.
+            suite_task: Task ID for the suite progress bar.
+            suite_name: Name of the suite.
+            suite_results: List of test results.
+            suite_name_width: Width allocated for suite names.
+            bar_width: Width of status bars in characters.
+        """
+        stats = ResultsStatistics.from_results(suite_results)
+        status_bar = self._render_status_bar(stats, bar_width)
+        summary_line = f"[cyan]{suite_name:<{suite_name_width}} | {status_bar} | {stats.get_status_summary()}"
+        progress.update(suite_task, description=summary_line)
+
     def run_all_with_progress(
         self,
         *,
@@ -821,7 +952,7 @@ class Runner:
         render_description: bool = True,
         render_traceback: bool = True,
         render_message: bool = True,
-    ) -> t.List[Result]:
+    ) -> t.Dict[t.Optional[str], t.List[Result]]:
         """Run all tests in all suites with a rich progress display.
 
         Executes all tests with a visual progress bar and detailed reporting
@@ -834,14 +965,19 @@ class Runner:
             render_message: Whether to render test result messages in result output.
 
         Returns:
-            List[Result]: List of all test results.
+            Dict[Optional[str], List[Result]]: Results grouped by test group name.
         """
-        suite_tests = [(suite, list(suite.get_tests())) for suite in self.suites]
-        test_count = sum(len(tests) for _, tests in suite_tests)
+
+        grouped_suites = self._collect_suites()
+        total_test_count = sum(sum(len(tests) for _, tests in group) for group in grouped_suites.values())
+
+        flatten_suite_tests = [
+            (suite, tests) for group_suites in grouped_suites.values() for suite, tests in group_suites
+        ]
 
         suite_name_width = (
-            max(len(getattr(suite, "name", suite.__class__.__name__)) for suite, _ in suite_tests)
-            if suite_tests
+            max(len(getattr(suite, "name", suite.__class__.__name__)) for suite, _ in flatten_suite_tests)
+            if flatten_suite_tests
             else 10
         )
         test_name_width = 20  # To render the test name during progress
@@ -857,44 +993,40 @@ class Runner:
 
         with rich.progress.Progress(*progress_format) as progress:
             total_task = progress.add_task(
-                "[bold green]Total Progress".ljust(suite_name_width + test_name_width + 5), total=test_count
+                "[bold green]TOTAL PROGRESS".ljust(suite_name_width + test_name_width + 5), total=total_test_count
             )
 
-            all_results = []
+            all_results: t.Dict[t.Optional[str], t.List[Result]] = {}
 
-            for suite, tests in suite_tests:
-                suite_name = getattr(suite, "name", suite.__class__.__name__)
-                suite_task = progress.add_task(f"[cyan]{suite_name}".ljust(suite_name_width + 5), total=len(tests))
-                suite_results = []
-
-                for test in tests:
-                    test_name = test.__name__
-                    test_desc = f"[cyan]{suite_name:<{suite_name_width}} • {test_name:<{test_name_width}}"
-                    progress.update(suite_task, description=test_desc)
-
-                    test_results = list(suite.run_test(test))
-                    suite_results.extend(test_results)
-
-                    progress.advance(total_task)
-                    progress.advance(suite_task)
-
-                if tests:
-                    stats = ResultsStatistics.from_results(suite_results)
-                    status_bar = self._render_status_bar(stats, bar_width)
-
-                    summary_line = (
-                        f"[cyan]{suite_name:<{suite_name_width}} | {status_bar} | {stats.get_status_summary()}"
+            for group, suite_tests in grouped_suites.items():
+                all_results[group] = []
+                group_task = progress.add_task(
+                    f"\n[honeydew2][{group or self._DEFAULT_TEST_GROUP}]".ljust(suite_name_width + test_name_width + 5),
+                    total=sum(len(tests) for _, tests in suite_tests),
+                )
+                for suite, tests in suite_tests:
+                    all_results[group] += self._run_suite_tests(
+                        progress, suite, tests, suite_name_width, test_name_width, total_task, group_task
                     )
-                    progress.update(suite_task, description=summary_line)
 
-                all_results.extend(suite_results)
+                if len(all_results[group]) > 0:
+                    group_stats = ResultsStatistics.from_results(all_results[group])
+                    group_status_bar = self._render_status_bar(group_stats, bar_width)
+                    _title = f"{group}" if group else self._DEFAULT_TEST_GROUP
+                    padding_width = max(0, suite_name_width - len(_title))
+                    group_line = f"\n[honeydew2][{_title}]{' ' * padding_width} | {group_status_bar} | {group_stats.get_status_summary()}"
+                    progress.update(group_task, description=group_line)
 
-            if test_count > 0:
-                total_stats = ResultsStatistics.from_results(all_results)
+            if total_test_count > 0:
+                total_stats = ResultsStatistics.from_results(
+                    [result for results in all_results.values() for result in results]
+                )
                 total_status_bar = self._render_status_bar(total_stats, bar_width)
 
-                _title = "Total"
-                total_line = f"[bold green]{_title}{' ':{suite_name_width - len(_title)}} | {total_status_bar} | {total_stats.get_status_summary()}"
+                _title = "TOTAL PROGRESS"
+                # Fix: Use max() to ensure padding width is never negative
+                padding_width = max(0, suite_name_width - len(_title))
+                total_line = f"[bold green]{_title}{' ' * padding_width} | {total_status_bar} | {total_stats.get_status_summary()}"
                 progress.update(total_task, description=total_line)
 
         self._results = all_results
@@ -909,9 +1041,9 @@ class Runner:
 
         return all_results
 
-    @staticmethod
     def print_results(
-        all_results: t.List[Result],
+        self,
+        grouped_results: t.Dict[t.Optional[str], t.List[Result]],
         include: set[Status] = set((Status.FAILED, Status.ERROR, Status.WARNING)),
         *,
         render_context: bool = True,
@@ -921,51 +1053,111 @@ class Runner:
     ):
         """Print detailed test results to the console.
 
+        Prints a summary of test results with status header, focusing on tests with
+        statuses specified in the include set. Results are grouped by their original
+        test group names.
+
         Args:
-            all_results: List of results to print.
+            grouped_results: Dictionary of results by group to print.
             include: Set of status types to include in the output.
             render_context: Whether to render test context.
             render_description: Whether to render test descriptions.
             render_traceback: Whether to render tracebacks for errors.
             render_message: Whether to render test result messages.
         """
-        if all_results:
-            included_tests = [r for r in all_results if r.status in include]
-            if included_tests:
-                console = Console()
-                console.print()
 
-                if include:
-                    console.print("Including ", end="")
-                    for i, status in enumerate(include):
-                        color = STATUS_COLOR[status]
-                        console.print(f"[{color}]{status}[/{color}]", end="")
-                        if i < len(include) - 1:
-                            console.print(", ", end="")
-                    console.print()
+        if not grouped_results:
+            return
 
-                console.print()
+        # Get all tests that match the included statuses
+        all_included_tests = []
+        for group, group_tests in grouped_results.items():
+            all_included_tests.extend([(group, r) for r in group_tests if r.status in include])
 
-                for idx, test_result in enumerate(included_tests, 1):
-                    color = STATUS_COLOR[test_result.status]
-                    console.print(
-                        f"[bold {color}]{idx}. {test_result.suite_name}.{test_result.test_name} ({test_result.status.value})[/bold {color}]"
-                    )
+        # If no tests match the included statuses, return early
+        if not all_included_tests:
+            return
 
-                    console.print(f"[{color}]Result:[/{color}] {test_result.result}")
+        console = Console()
+        console.print()
+        self._print_status_header(console, include)
+        console.print()
 
-                    if render_message and test_result.message:
-                        console.print(f"[{color}]Message:[/{color}] {test_result.message}")
+        for idx, (group, test_result) in enumerate(all_included_tests):
+            group_name = group or self._DEFAULT_TEST_GROUP
+            self._print_test_result(
+                console,
+                test_result,
+                group_name,
+                idx,
+                render_message,
+                render_description,
+                render_traceback,
+                render_context,
+            )
+            console.print()
 
-                    if render_description and test_result.description:
-                        console.print(f"[{color}]Description:[/{color}] {test_result.description}")
+    def _print_status_header(self, console: Console, include: set[Status]) -> None:
+        """Print header showing which statuses are included.
 
-                    if render_traceback and test_result.traceback:
-                        console.print(f"[{color}]Traceback:[/{color}]")
-                        syntax = Syntax(test_result.traceback, "pytb", theme="ansi", line_numbers=False)
-                        console.print(syntax)
+        Args:
+            console: Console to print to.
+            include: Set of statuses to include.
+        """
+        if include:
+            console.print("Including ", end="")
+            for i, status in enumerate(include):
+                color = STATUS_COLOR[status]
+                console.print(f"[{color}]{status}[/{color}]", end="")
+                if i < len(include) - 1:
+                    console.print(", ", end="")
+            console.print()
 
-                    if render_context and test_result.context:
-                        console.print(f"[{color}]Context:[/{color}] {test_result.context}")
+    def _print_test_result(
+        self,
+        console: Console,
+        test_result: Result,
+        group_name: str,
+        idx: int,
+        render_message: bool = True,
+        render_description: bool = True,
+        render_traceback: bool = True,
+        render_context: bool = True,
+    ) -> None:
+        """Print details of a single test result.
 
-                    console.print("=" * 80)
+        Args:
+            console: Console to print to.
+            test_result: The test result to print.
+            group_name: Name of the group containing the test.
+            idx: Index number for the test result.
+            render_message: Whether to render the message.
+            render_description: Whether to render the description.
+            render_traceback: Whether to render the traceback.
+            render_context: Whether to render the context.
+        """
+        color = STATUS_COLOR[test_result.status]
+
+        # Print header
+        console.print(
+            f"[bold {color}]{idx}. [{group_name}] {test_result.suite_name}.{test_result.test_name}[/bold {color}]"
+        )
+
+        console.print(f"[{color}]Result:[/{color}] {test_result.result}")
+
+        if render_message and test_result.message:
+            console.print(f"[{color}]Message:[/{color}] {test_result.message}")
+
+        if render_description and test_result.description:
+            console.print(f"[{color}]Description:[/{color}] {test_result.description}")
+
+        if render_traceback and test_result.traceback:
+            console.print(f"[{color}]Traceback:[/{color}]")
+            syntax = Syntax(test_result.traceback, "pytb", theme="ansi", line_numbers=False)
+            console.print(syntax)
+
+        if render_context and test_result.context:
+            console.print(f"[{color}]Context:[/{color}] {test_result.context}")
+
+        # Print separator
+        console.print("=" * 80)

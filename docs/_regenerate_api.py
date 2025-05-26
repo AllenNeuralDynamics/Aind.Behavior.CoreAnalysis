@@ -25,6 +25,7 @@ log = logging.getLogger("mkdocs")
 
 
 def on_pre_build(config):
+    """Mkdocs pre-build hook."""
     main()
 
 

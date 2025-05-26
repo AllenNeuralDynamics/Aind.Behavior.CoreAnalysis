@@ -83,26 +83,41 @@ class TestRunner:
 
         result = runner.add_suite(suite)
         assert result is runner
+        assert None in runner.suites
+        assert len(runner.suites[None]) == 1
+        assert runner.suites[None][0] is suite
 
-        assert len(runner.suites) == 1
-        assert runner.suites[0] is suite
+        suite2 = MockSuite()
+        result = runner.add_suite(suite2, group="TestGroup")
+        assert result is runner
+        assert "TestGroup" in runner.suites
+        assert len(runner.suites["TestGroup"]) == 1
+        assert runner.suites["TestGroup"][0] is suite2
 
     @patch("rich.progress.Progress")
     def test_run_all_with_progress(self, mock_progress):
         """Test running all tests with progress reporting."""
         runner = Runner()
-        suite = MockSuite()
-        runner.add_suite(suite)
+        suite1 = MockSuite()
+        suite2 = MockSuite()
+        
+        runner.add_suite(suite1)  # Default group (None)
+        runner.add_suite(suite2, group="TestGroup")
 
         with patch.object(runner, "print_results"):
-            results = runner.run_all_with_progress()
+            grouped_results = runner.run_all_with_progress()
 
-            assert len(results) == 6
+            assert None in grouped_results
+            assert "TestGroup" in grouped_results
+            
+            assert len(grouped_results[None]) == 6  # All tests in MockSuite
+            assert len(grouped_results["TestGroup"]) == 6  # All tests in MockSuite
 
-            stats = ResultsStatistics.from_results(results)
+            all_results = grouped_results[None] + grouped_results["TestGroup"]
+            stats = ResultsStatistics.from_results(all_results)
 
-            assert stats[Status.PASSED] == 2
-            assert stats[Status.FAILED] == 1
-            assert stats[Status.ERROR] == 1
-            assert stats[Status.SKIPPED] == 1
-            assert stats[Status.WARNING] == 1
+            assert stats[Status.PASSED] == 4
+            assert stats[Status.FAILED] == 2
+            assert stats[Status.ERROR] == 2
+            assert stats[Status.SKIPPED] == 2
+            assert stats[Status.WARNING] == 2
