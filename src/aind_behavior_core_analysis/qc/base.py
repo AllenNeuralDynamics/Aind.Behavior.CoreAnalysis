@@ -1013,7 +1013,8 @@ class Runner:
                     group_stats = ResultsStatistics.from_results(all_results[group])
                     group_status_bar = self._render_status_bar(group_stats, bar_width)
                     _title = f"{group}" if group else self._DEFAULT_TEST_GROUP
-                    group_line = f"\n[honeydew2][{_title}]{' ':{suite_name_width - len(_title)}} | {group_status_bar} | {group_stats.get_status_summary()}"
+                    padding_width = max(0, suite_name_width - len(_title))
+                    group_line = f"\n[honeydew2][{_title}]{' ' * padding_width} | {group_status_bar} | {group_stats.get_status_summary()}"
                     progress.update(group_task, description=group_line)
 
             if total_test_count > 0:
@@ -1023,7 +1024,9 @@ class Runner:
                 total_status_bar = self._render_status_bar(total_stats, bar_width)
 
                 _title = "TOTAL PROGRESS"
-                total_line = f"[bold green]{_title}{' ':{suite_name_width - len(_title)}} | {total_status_bar} | {total_stats.get_status_summary()}"
+                # Fix: Use max() to ensure padding width is never negative
+                padding_width = max(0, suite_name_width - len(_title))
+                total_line = f"[bold green]{_title}{' ' * padding_width} | {total_status_bar} | {total_stats.get_status_summary()}"
                 progress.update(total_task, description=total_line)
 
         self._results = all_results

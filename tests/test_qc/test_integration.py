@@ -68,10 +68,13 @@ class TestIntegration:
         suite = ExampleBoardTestSuite(mock_device)
 
         runner = Runner()
-        runner.add_suite(suite)
+        runner.add_suite(suite, group="TestDevices")
 
         with patch.object(runner, "print_results"):
-            results = runner.run_all_with_progress()
+            grouped_results = runner.run_all_with_progress()
+            
+            assert "TestDevices" in grouped_results
+            results = grouped_results["TestDevices"]
 
             stats = ResultsStatistics.from_results(results)
             assert stats[Status.PASSED] == 4
@@ -84,7 +87,9 @@ class TestIntegration:
         runner.add_suite(suite)
 
         with patch.object(runner, "print_results"):
-            results = runner.run_all_with_progress()
+            grouped_results = runner.run_all_with_progress()
+            
+            results = grouped_results[None]
 
             stats = ResultsStatistics.from_results(results)
 
@@ -102,9 +107,34 @@ class TestIntegration:
         # Allow None to be treated as pass
         with allow_null_as_pass():
             with patch.object(runner, "print_results"):
-                results = runner.run_all_with_progress()
+                grouped_results = runner.run_all_with_progress()
+                results = grouped_results[None]
 
                 stats = ResultsStatistics.from_results(results)
 
                 assert stats[Status.PASSED] == 5
                 assert stats[Status.ERROR] == 0
+
+    def test_multiple_groups(self, mock_device, invalid_device):
+        """Test running suites in multiple groups."""
+        valid_suite = ExampleBoardTestSuite(mock_device)
+        invalid_suite = ExampleBoardTestSuite(invalid_device)
+        
+        runner = Runner()
+        runner.add_suite(valid_suite, "ValidDevices")
+        runner.add_suite(invalid_suite, "InvalidDevices")
+        
+        with patch.object(runner, "print_results"):
+            grouped_results = runner.run_all_with_progress()
+            
+            assert "ValidDevices" in grouped_results
+            assert "InvalidDevices" in grouped_results
+            
+            valid_stats = ResultsStatistics.from_results(grouped_results["ValidDevices"])
+            assert valid_stats[Status.PASSED] == 4
+            assert valid_stats[Status.ERROR] == 1
+            
+            invalid_stats = ResultsStatistics.from_results(grouped_results["InvalidDevices"])
+            assert invalid_stats[Status.PASSED] == 2
+            assert invalid_stats[Status.FAILED] == 2
+            assert invalid_stats[Status.ERROR] == 1
