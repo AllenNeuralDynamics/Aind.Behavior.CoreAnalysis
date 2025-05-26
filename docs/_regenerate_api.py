@@ -32,11 +32,13 @@ def on_pre_build(config):
         dest = DOCS_DIR / file_or_dir
         if src.exists():
             log.info(f"Copying {file_or_dir} to docs...")
-            if dest.exists():
-                shutil.rmtree(dest)
-            if not src.is_dir():
+
+            if src.is_file():
+                print(f"Copying file {src} to {dest}")
                 shutil.copy(src, dest)
             else:
+                if dest.exists():
+                    shutil.rmtree(dest)
                 shutil.copytree(src, dest)
             log.info(f"{file_or_dir} copied successfully.")
         else:

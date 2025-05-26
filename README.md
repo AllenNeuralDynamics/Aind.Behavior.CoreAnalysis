@@ -1,16 +1,15 @@
-# contraqctor
+[![contraqctor](./assets/logo-letter.svg)](https://allenneuraldynamics.github.io/contraqctor/)
 
-![contraqctor](./assets/logo-letter.svg)
-
-[![Documentation](https://tinyurl.com/bdd8prh7)](https://allenneuraldynamics.github.io/Aind.Behavior.CoreAnalysis/)
+[![Documentation](https://tinyurl.com/zf46ufwa)](https://allenneuraldynamics.github.io/Aind.Behavior.CoreAnalysis/)
 ![CI](https://github.com/AllenNeuralDynamics/Aind.Behavior.CoreAnalysis/actions/workflows/ci.yml/badge.svg)
 [![PyPI - Version](https://img.shields.io/pypi/v/contraqctor)](https://pypi.org/project/contraqctor/)
 [![License](https://img.shields.io/badge/license-MIT-brightgreen)](LICENSE)
 [![ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
 
-A repository for managing data contracts and quality control in behavioral datasets.
+# contraqctor
 
+A repository for managing data contracts and quality control in behavioral datasets.
 
 > ⚠️ **Caution:**  
 > This repository is currently under active development and is subject to frequent changes. Features and APIs may evolve without prior notice.
@@ -116,7 +115,7 @@ runner.add_suite(MyCustomTestSuite(data_stream))
 results = runner.run_all_with_progress()
 ```
 
-For more detailed examples, please check the [Examples](./examples/) folder.
+For more detailed examples, please check the [Examples](examples) folder.
 
 ---
 
