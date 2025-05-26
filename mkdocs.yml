@@ -38,7 +38,7 @@ theme:
   - search.suggest
   - toc.follow
   logo: logo.svg
-  favicon: favicon.ico
+  favicon: icon.ico
 hooks:
 - docs/_regenerate_api.py
 plugins:
@@ -50,9 +50,7 @@ plugins:
         options:
           separate_signature: true
           filters:
-          - "!^_"
-          docstring_options:
-          ignore_init_summary: true
+          - '!^_'
           merge_init_into_class: true
           show_signature_annotations: true
           signature_crossrefs: true

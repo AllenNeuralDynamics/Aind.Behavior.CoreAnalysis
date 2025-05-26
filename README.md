@@ -1,4 +1,7 @@
 # contraqctor
+
+![contraqctor](./assets/logo-letter.svg)
+
 [![Documentation](https://tinyurl.com/bdd8prh7)](https://allenneuraldynamics.github.io/Aind.Behavior.CoreAnalysis/)
 ![CI](https://github.com/AllenNeuralDynamics/Aind.Behavior.CoreAnalysis/actions/workflows/ci.yml/badge.svg)
 [![PyPI - Version](https://img.shields.io/pypi/v/contraqctor)](https://pypi.org/project/contraqctor/)
@@ -6,9 +9,8 @@
 [![ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
 
-A repository with core primitives for analysis shared across all `Aind.Behavior` tasks.
+A repository for managing data contracts and quality control in behavioral datasets.
 
-This repository is part of a bigger infrastructure that is summarized [here](https://github.com/AllenNeuralDynamics/Aind.Behavior.Services).
 
 > ⚠️ **Caution:**  
 > This repository is currently under active development and is subject to frequent changes. Features and APIs may evolve without prior notice.

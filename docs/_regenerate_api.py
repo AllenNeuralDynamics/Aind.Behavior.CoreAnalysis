@@ -8,6 +8,7 @@ import logging
 from pathlib import Path
 
 import yaml
+import shutil
 
 # Constants
 ROOT_DIR = Path(__file__).parent.parent
@@ -20,12 +21,27 @@ API_LABEL = "API Reference"
 
 # Leaving this manual for now.
 DOCUMENTED_MODULES = ["contract", "qc"]
-
+TO_COPY = ["assets", "examples", "LICENSE"]
 log = logging.getLogger("mkdocs")
 
 
 def on_pre_build(config):
     """Mkdocs pre-build hook."""
+    for file_or_dir in TO_COPY:
+        src = ROOT_DIR / file_or_dir
+        dest = DOCS_DIR / file_or_dir
+        if src.exists():
+            log.info(f"Copying {file_or_dir} to docs...")
+            if dest.exists():
+                shutil.rmtree(dest)
+            if not src.is_dir():
+                shutil.copy(src, dest)
+            else:
+                shutil.copytree(src, dest)
+            log.info(f"{file_or_dir} copied successfully.")
+        else:
+            log.warning(f"Source: {file_or_dir} not found, skipping.")
+
     main()
 
 
