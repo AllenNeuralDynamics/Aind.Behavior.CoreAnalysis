@@ -115,7 +115,7 @@ class ITest(t.Protocol):
 TResult = t.TypeVar("TResult", bound=t.Any)
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class Result(t.Generic[TResult]):
     """Container for test execution results.
 
@@ -127,8 +127,8 @@ class Result(t.Generic[TResult]):
         result: The value returned by the test.
         test_name: Name of the test that generated this result.
         suite_name: Name of the test suite containing the test.
-        _test_reference: Optional reference to the test function.
-        _suite_reference: Optional reference to the test suite instance.
+        test_reference: Optional reference to the test function.
+        suite_reference: Optional reference to the test suite instance.
         message: Optional message describing the test outcome.
         context: Optional contextual data for the test result.
         description: Optional description of the test.
@@ -140,13 +140,13 @@ class Result(t.Generic[TResult]):
     result: TResult
     test_name: str
     suite_name: str
-    _test_reference: t.Optional[ITest] = dataclasses.field(default=None, repr=False)
-    _suite_reference: t.Optional["Suite"] = dataclasses.field(default=None, repr=False)
     message: t.Optional[str] = None
     context: t.Optional[t.Any] = dataclasses.field(default=None, repr=False)
     description: t.Optional[str] = dataclasses.field(default=None, repr=False)
     exception: t.Optional[Exception] = dataclasses.field(default=None, repr=False)
     traceback: t.Optional[str] = dataclasses.field(default=None, repr=False)
+    test_reference: t.Optional[ITest] = dataclasses.field(default=None, repr=False)
+    suite_reference: t.Optional["Suite"] = dataclasses.field(default=None, repr=False)
 
 
 def implicit_pass(func: t.Callable[..., t.Any]) -> t.Callable[..., Result]:
@@ -597,11 +597,15 @@ class Suite(abc.ABC):
             result = self.pass_test(None, "Test passed with <null> result implicitly.")
 
         if isinstance(result, Result):
-            result._test_reference = test_method
-            result._suite_reference = self
-            result.test_name = test_name
-            result.suite_name = self.name
-            result.description = description
+            result = dataclasses.replace(
+                result,
+                test_reference=test_method,
+                suite_reference=self,
+                test_name=test_name,
+                suite_name=self.name,
+                description=description,
+            )
+
             return result
 
         error_msg = f"Test method '{test_name}' must return a TestResult instance or generator, but got {type(result).__name__}."
@@ -613,8 +617,8 @@ class Suite(abc.ABC):
             description=description,
             message=error_msg,
             exception=TypeError(error_msg),
-            _test_reference=test_method,
-            _suite_reference=self,
+            test_reference=test_method,
+            suite_reference=self,
         )
 
     def run_test(self, test_method: ITest) -> t.Generator[Result, None, None]:
@@ -651,8 +655,8 @@ class Suite(abc.ABC):
                 message=f"Error during test execution: {str(e)}",
                 exception=e,
                 traceback=tb,
-                _test_reference=test_method,
-                _suite_reference=self,
+                test_reference=test_method,
+                suite_reference=self,
             )
         finally:
             self.teardown()
