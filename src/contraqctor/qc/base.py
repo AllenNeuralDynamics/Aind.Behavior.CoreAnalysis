@@ -643,7 +643,6 @@ class Suite(abc.ABC):
                 for sub_result in result:
                     yield self._process_test_result(sub_result, test_method, test_name, test_description)
             else:
-                assert isinstance(result, Result)
                 yield self._process_test_result(result, test_method, test_name, test_description)
         except Exception as e:
             tb = traceback.format_exc()
