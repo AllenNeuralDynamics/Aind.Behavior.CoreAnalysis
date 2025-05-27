@@ -268,3 +268,21 @@ class TestSuite:
         with pytest.raises(ValueError) as e_info:
             list(suite.run_all())
         assert "Teardown error" in str(e_info.value)
+
+    def test_suite_reference(self):
+        """Test that _suite_reference is properly set on results."""
+        suite = SimpleSuite()
+
+        pass_result = list(suite.run_test(suite.test_always_pass))[0]
+        assert pass_result._suite_reference is suite
+
+        error_result = list(suite.run_test(suite.test_implicit_fail))[0]
+        assert error_result._suite_reference is suite
+
+        class ExceptionSuite(Suite):
+            def test_exception(self):
+                raise ValueError("Test exception")
+
+        exception_suite = ExceptionSuite()
+        exception_result = list(exception_suite.run_test(exception_suite.test_exception))[0]
+        assert exception_result._suite_reference is exception_suite

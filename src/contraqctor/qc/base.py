@@ -128,6 +128,7 @@ class Result(t.Generic[TResult]):
         test_name: Name of the test that generated this result.
         suite_name: Name of the test suite containing the test.
         _test_reference: Optional reference to the test function.
+        _suite_reference: Optional reference to the test suite instance.
         message: Optional message describing the test outcome.
         context: Optional contextual data for the test result.
         description: Optional description of the test.
@@ -140,6 +141,7 @@ class Result(t.Generic[TResult]):
     test_name: str
     suite_name: str
     _test_reference: t.Optional[ITest] = dataclasses.field(default=None, repr=False)
+    _suite_reference: t.Optional["Suite"] = dataclasses.field(default=None, repr=False)
     message: t.Optional[str] = None
     context: t.Optional[t.Any] = dataclasses.field(default=None, repr=False)
     description: t.Optional[str] = dataclasses.field(default=None, repr=False)
@@ -596,6 +598,7 @@ class Suite(abc.ABC):
 
         if isinstance(result, Result):
             result._test_reference = test_method
+            result._suite_reference = self
             result.test_name = test_name
             result.suite_name = self.name
             result.description = description
@@ -611,6 +614,7 @@ class Suite(abc.ABC):
             message=error_msg,
             exception=TypeError(error_msg),
             _test_reference=test_method,
+            _suite_reference=self,
         )
 
     def run_test(self, test_method: ITest) -> t.Generator[Result, None, None]:
@@ -648,6 +652,7 @@ class Suite(abc.ABC):
                 exception=e,
                 traceback=tb,
                 _test_reference=test_method,
+                _suite_reference=self,
             )
         finally:
             self.teardown()
