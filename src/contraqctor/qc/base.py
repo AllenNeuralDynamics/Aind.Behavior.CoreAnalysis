@@ -128,12 +128,13 @@ class Result(t.Generic[TResult]):
         result: The value returned by the test.
         test_name: Name of the test that generated this result.
         suite_name: Name of the test suite containing the test.
-        test_reference: Optional reference to the test function.
         message: Optional message describing the test outcome.
         context: Optional contextual data for the test result.
         description: Optional description of the test.
         exception: Optional exception that occurred during test execution.
         traceback: Optional traceback string if an exception occurred.
+        test_reference: Optional reference to the test function.
+        suite_reference: Optional reference to the suite that ran this test.
     """
 
     status: Status
@@ -589,9 +590,6 @@ class Suite(abc.ABC):
 
         Returns:
             Result: A properly formatted Result object.
-
-        Raises:
-            TypeError: If the test method returns something other than a Result object or generator.
         """
         if result is None and _allow_null_as_pass_ctx.get():
             result = self.pass_test(None, "Test passed with <null> result implicitly.")
@@ -785,11 +783,28 @@ class ResultsStatistics:
 
 @dataclasses.dataclass(frozen=True)
 class _Tagged(abc.ABC):
+    """Abstract base class for tagged items.
+    
+    Used internally to associate suites, groups, and tests for organization
+    and filtering of test executions and results.
+    
+    Attributes:
+        suite: The test suite this item belongs to.
+        group: Optional group name this item belongs to.
+    """
     suite: Suite
     group: t.Optional[str]
 
     @classmethod
     def group_by_suite(cls, values: t.Iterable[t.Self]) -> t.Generator[t.Tuple[Suite, t.List[t.Self]], None, None]:
+        """Group items by their associated test suite.
+
+        Args:
+            values: Iterable of tagged items to group.
+
+        Yields:
+            Tuple containing a suite and all items associated with that suite.
+        """
         for suite, group in itertools.groupby(values, key=lambda x: x.suite):
             yield suite, list(group)
 
@@ -797,6 +812,14 @@ class _Tagged(abc.ABC):
     def group_by_group(
         cls, values: t.Iterable[t.Self]
     ) -> t.Generator[t.Tuple[t.Optional[str], t.List[t.Self]], None, None]:
+        """Group items by their associated group name.
+
+        Args:
+            values: Iterable of tagged items to group.
+
+        Yields:
+            Tuple containing a group name and all items associated with that group.
+        """
         for group, group_items in itertools.groupby(values, key=lambda x: x.group):
             yield group, list(group_items)
 
@@ -829,12 +852,28 @@ class _Tagged(abc.ABC):
 
 @dataclasses.dataclass(frozen=True)
 class _TaggedResult(_Tagged):
+    """Container for a test result with suite and group information.
+
+    Associates a test result with its test, suite, and group for organization
+    and reporting.
+    
+    Attributes:
+        result: The test execution result.
+        test: Optional reference to the test that produced this result.
+    """
     result: Result
     test: t.Optional[ITest]
 
 
 @dataclasses.dataclass(frozen=True)
 class _TaggedTest(_Tagged):
+    """Container for a test with suite and group information.
+    
+    Associates a test with its suite and group for organization and execution.
+    
+    Attributes:
+        test: The test function to execute.
+    """
     test: ITest
 
 
@@ -868,7 +907,7 @@ class Runner:
 
     @t.overload
     def add_suite(self, suite: Suite, group: str) -> t.Self:
-        """Add a test suite to the runner.
+        """Add a test suite to the runner with a specific group.
 
         Args:
             suite: Test suite to add.
@@ -908,10 +947,13 @@ class Runner:
         return self
 
     def _collect_tests(self) -> t.List[_TaggedTest]:
-        """Collect all suites and their test methods.
+        """Collect all tests across all suites and groups.
+
+        Iterates through all registered suites and groups, collecting all test methods
+        and tagging them with their source suite and group.
 
         Returns:
-            Dict mapping group names to lists of (suite, tests) tuples.
+            List of tagged tests ready for execution.
         """
         tests: t.List[_TaggedTest] = []
         for group, suites in self.suites.items():
@@ -1161,7 +1203,7 @@ class Runner:
         test group names.
 
         Args:
-            grouped_results: Dictionary of results by group to print.
+            results: List of tagged test results to print.
             include: Set of status types to include in the output.
             render_context: Whether to render test context.
             render_description: Whether to render test descriptions.
