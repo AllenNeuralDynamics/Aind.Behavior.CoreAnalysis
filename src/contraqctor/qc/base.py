@@ -790,12 +790,14 @@ class _Tagged(abc.ABC):
     group: t.Optional[str]
 
     @classmethod
-    def group_by_suite(cls, values: t.Iterable[t.Self]) -> t.Generator[t.Tuple[Suite, t.List[t.Self]]]:
+    def group_by_suite(cls, values: t.Iterable[t.Self]) -> t.Generator[t.Tuple[Suite, t.List[t.Self]], None, None]:
         for suite, group in itertools.groupby(values, key=lambda x: x.suite):
             yield suite, list(group)
 
     @classmethod
-    def group_by_group(cls, values: t.Iterable[t.Self]) -> t.Generator[t.Tuple[t.Optional[str], t.List[t.Self]]]:
+    def group_by_group(
+        cls, values: t.Iterable[t.Self]
+    ) -> t.Generator[t.Tuple[t.Optional[str], t.List[t.Self]], None, None]:
         for group, group_items in itertools.groupby(values, key=lambda x: x.group):
             yield group, list(group_items)
 
@@ -1181,8 +1183,8 @@ class Runner:
         console.print()
         self._print_status_header(console, include)
         console.print()
-
-        for idx, (group, test_results) in enumerate(_TaggedResult.group_by_group(all_included_results)):
+        idx = 0
+        for group, test_results in _TaggedResult.group_by_group(all_included_results):
             group_name = group or self._DEFAULT_TEST_GROUP
             for result in test_results:
                 self._print_test_result(
@@ -1196,6 +1198,7 @@ class Runner:
                     render_context,
                 )
                 console.print()
+                idx += 1
 
     def _print_status_header(self, console: Console, include: set[Status]) -> None:
         """Print header showing which statuses are included.
