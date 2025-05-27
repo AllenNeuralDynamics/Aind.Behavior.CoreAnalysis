@@ -70,7 +70,7 @@ class TestIntegration:
         runner = Runner()
         runner.add_suite(suite, group="TestDevices")
 
-        with patch.object(runner, "print_results"):
+        with patch.object(runner, "_print_results"):
             grouped_results = runner.run_all_with_progress()
 
             assert "TestDevices" in grouped_results
@@ -86,7 +86,7 @@ class TestIntegration:
         runner = Runner()
         runner.add_suite(suite)
 
-        with patch.object(runner, "print_results"):
+        with patch.object(runner, "_print_results"):
             grouped_results = runner.run_all_with_progress()
 
             results = grouped_results[None]
@@ -106,7 +106,7 @@ class TestIntegration:
 
         # Allow None to be treated as pass
         with allow_null_as_pass():
-            with patch.object(runner, "print_results"):
+            with patch.object(runner, "_print_results"):
                 grouped_results = runner.run_all_with_progress()
                 results = grouped_results[None]
 
@@ -124,7 +124,7 @@ class TestIntegration:
         runner.add_suite(valid_suite, "ValidDevices")
         runner.add_suite(invalid_suite, "InvalidDevices")
 
-        with patch.object(runner, "print_results"):
+        with patch.object(runner, "_print_results"):
             grouped_results = runner.run_all_with_progress()
 
             assert "ValidDevices" in grouped_results

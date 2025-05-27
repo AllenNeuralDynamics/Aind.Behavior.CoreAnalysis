@@ -104,7 +104,7 @@ class TestRunner:
         runner.add_suite(suite1)  # Default group (None)
         runner.add_suite(suite2, group="TestGroup")
 
-        with patch.object(runner, "print_results"):
+        with patch.object(runner, "_print_results"):
             grouped_results = runner.run_all_with_progress()
 
             assert None in grouped_results
