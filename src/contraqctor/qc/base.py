@@ -3,6 +3,7 @@ import contextvars
 import dataclasses
 import functools
 import inspect
+import itertools
 import traceback
 import typing as t
 from contextlib import contextmanager
@@ -128,7 +129,6 @@ class Result(t.Generic[TResult]):
         test_name: Name of the test that generated this result.
         suite_name: Name of the test suite containing the test.
         test_reference: Optional reference to the test function.
-        suite_reference: Optional reference to the test suite instance.
         message: Optional message describing the test outcome.
         context: Optional contextual data for the test result.
         description: Optional description of the test.
@@ -643,6 +643,7 @@ class Suite(abc.ABC):
                 for sub_result in result:
                     yield self._process_test_result(sub_result, test_method, test_name, test_description)
             else:
+                assert isinstance(result, Result)
                 yield self._process_test_result(result, test_method, test_name, test_description)
         except Exception as e:
             tb = traceback.format_exc()
@@ -765,6 +766,76 @@ class ResultsStatistics:
             warnings=stats[Status.WARNING],
         )
 
+    def __add__(self, other: "ResultsStatistics") -> "ResultsStatistics":
+        """Add two ResultsStatistics objects together.
+
+        Args:
+            other: Another ResultsStatistics object to add.
+
+        Returns:
+            ResultsStatistics: New object with combined statistics.
+        """
+        return ResultsStatistics(
+            passed=self.passed + other.passed,
+            failed=self.failed + other.failed,
+            error=self.error + other.error,
+            skipped=self.skipped + other.skipped,
+            warnings=self.warnings + other.warnings,
+        )
+
+
+@dataclasses.dataclass(frozen=True)
+class _Tagged(abc.ABC):
+    suite: Suite
+    group: t.Optional[str]
+
+    @classmethod
+    def group_by_suite(cls, values: t.Iterable[t.Self]) -> t.Generator[t.Tuple[Suite, t.List[t.Self]]]:
+        for suite, group in itertools.groupby(values, key=lambda x: x.suite):
+            yield suite, list(group)
+
+    @classmethod
+    def group_by_group(cls, values: t.Iterable[t.Self]) -> t.Generator[t.Tuple[t.Optional[str], t.List[t.Self]]]:
+        for group, group_items in itertools.groupby(values, key=lambda x: x.group):
+            yield group, list(group_items)
+
+    @classmethod
+    def get_by_group(cls, values: t.Iterable[t.Self], group: t.Optional[str]) -> t.List[t.Self]:
+        """Get all items in a specific group.
+
+        Args:
+            values: Iterable of tagged items.
+            group: Group name to filter by.
+
+        Returns:
+            List of tagged items in the specified group.
+        """
+        return [item for item in values if item.group == group]
+
+    @classmethod
+    def get_by_suite(cls, values: t.Iterable[t.Self], suite: Suite) -> t.List[t.Self]:
+        """Get all items in a specific suite.
+
+        Args:
+            values: Iterable of tagged items.
+            suite: Suite to filter by.
+
+        Returns:
+            List of tagged items in the specified suite.
+        """
+        return [item for item in values if item.suite == suite]
+
+
+@dataclasses.dataclass(frozen=True)
+class _TaggedResult(_Tagged):
+    result: Result
+    test: t.Optional[ITest]
+
+
+@dataclasses.dataclass(frozen=True)
+class _TaggedTest(_Tagged):
+    test: ITest
+
 
 class Runner:
     """Test runner for executing suites and reporting results.
@@ -781,7 +852,7 @@ class Runner:
     def __init__(self):
         """Initialize the test runner."""
         self.suites: t.Dict[t.Optional[str], t.List[Suite]] = {}
-        self._results: t.Optional[t.Dict[t.Optional[str], t.List[Result]]] = None
+        self._results: t.Optional[t.List[_TaggedResult]] = None
 
     @t.overload
     def add_suite(self, suite: Suite) -> t.Self:
@@ -793,7 +864,6 @@ class Runner:
         Returns:
             Runner: Self for method chaining.
         """
-        ...
 
     @t.overload
     def add_suite(self, suite: Suite, group: str) -> t.Self:
@@ -836,16 +906,18 @@ class Runner:
             self.suites[group] = [suite]
         return self
 
-    def _collect_suites(self) -> t.Dict[t.Optional[str], t.List[t.Tuple[Suite, t.List[ITest]]]]:
+    def _collect_tests(self) -> t.List[_TaggedTest]:
         """Collect all suites and their test methods.
 
         Returns:
             Dict mapping group names to lists of (suite, tests) tuples.
         """
-        grouped_suites: t.Dict[t.Optional[str], t.List[t.Tuple[Suite, t.List[ITest]]]] = {}
+        tests: t.List[_TaggedTest] = []
         for group, suites in self.suites.items():
-            grouped_suites[group] = [(suite, list(suite.get_tests())) for suite in suites]
-        return grouped_suites
+            for suite in suites:
+                for test in suite.get_tests():
+                    tests.append(_TaggedTest(suite=suite, group=group, test=test))
+        return tests
 
     def _render_status_bar(self, stats: ResultsStatistics, bar_width: int = 20) -> str:
         """Render a colored status bar representing test result proportions.
@@ -989,18 +1061,12 @@ class Runner:
             Dict[Optional[str], List[Result]]: Results grouped by test group name.
         """
 
-        grouped_suites = self._collect_suites()
-        total_test_count = sum(sum(len(tests) for _, tests in group) for group in grouped_suites.values())
+        collected_tests = self._collect_tests()
+        total_test_count = len(collected_tests)
 
-        flatten_suite_tests = [
-            (suite, tests) for group_suites in grouped_suites.values() for suite, tests in group_suites
-        ]
+        suite_name_lengths = [len(suite.name) for suite, _ in _TaggedTest.group_by_suite(collected_tests)]
+        suite_name_width = max(suite_name_lengths) if suite_name_lengths else 10
 
-        suite_name_width = (
-            max(len(getattr(suite, "name", suite.__class__.__name__)) for suite, _ in flatten_suite_tests)
-            if flatten_suite_tests
-            else 10
-        )
         test_name_width = 20  # To render the test name during progress
         bar_width = 20
 
@@ -1017,21 +1083,33 @@ class Runner:
                 "[bold green]TOTAL PROGRESS".ljust(suite_name_width + test_name_width + 5), total=total_test_count
             )
 
-            all_results: t.Dict[t.Optional[str], t.List[Result]] = {}
+            collected_results: t.List[_TaggedResult] = []
 
-            for group, suite_tests in grouped_suites.items():
-                all_results[group] = []
+            for group, tests_in_group in _TaggedTest.group_by_group(collected_tests):
                 group_task = progress.add_task(
                     f"\n[honeydew2][{group or self._DEFAULT_TEST_GROUP}]".ljust(suite_name_width + test_name_width + 5),
-                    total=sum(len(tests) for _, tests in suite_tests),
+                    total=len(tests_in_group),
                 )
-                for suite, tests in suite_tests:
-                    all_results[group] += self._run_suite_tests(
-                        progress, suite, tests, suite_name_width, test_name_width, total_task, group_task
+                for suite, tests_in_suite in _TaggedTest.group_by_suite(tests_in_group):
+                    results = self._run_suite_tests(
+                        progress,
+                        suite,
+                        [t.test for t in tests_in_suite],
+                        suite_name_width,
+                        test_name_width,
+                        total_task,
+                        group_task,
                     )
+                    for result in results:
+                        collected_results.append(
+                            _TaggedResult(suite=suite, group=group, result=result, test=result.test_reference)
+                        )
 
-                if len(all_results[group]) > 0:
-                    group_stats = ResultsStatistics.from_results(all_results[group])
+                if len(_TaggedResult.get_by_group(collected_results, group)) > 0:
+                    group_results = [
+                        tagged_result.result for tagged_result in _TaggedResult.get_by_group(collected_results, group)
+                    ]
+                    group_stats = ResultsStatistics.from_results(group_results)
                     group_status_bar = self._render_status_bar(group_stats, bar_width)
                     _title = f"{group}" if group else self._DEFAULT_TEST_GROUP
                     padding_width = max(0, suite_name_width - len(_title))
@@ -1040,7 +1118,7 @@ class Runner:
 
             if total_test_count > 0:
                 total_stats = ResultsStatistics.from_results(
-                    [result for results in all_results.values() for result in results]
+                    [tagged_result.result for tagged_result in collected_results]
                 )
                 total_status_bar = self._render_status_bar(total_stats, bar_width)
 
@@ -1050,9 +1128,9 @@ class Runner:
                 total_line = f"[bold green]{_title}{' ' * padding_width} | {total_status_bar} | {total_stats.get_status_summary()}"
                 progress.update(total_task, description=total_line)
 
-        self._results = all_results
+        self._results = collected_results
         if self._results:
-            self.print_results(
+            self._print_results(
                 self._results,
                 render_description=render_description,
                 render_traceback=render_traceback,
@@ -1060,12 +1138,15 @@ class Runner:
                 render_context=render_context,
             )
 
-        return all_results
+        out: t.Dict[t.Optional[str], t.List[Result]] = {}
+        for group, grouped_results in _TaggedResult.group_by_group(collected_results):
+            out[group] = [tagged_result.result for tagged_result in grouped_results]
+        return out
 
-    def print_results(
+    def _print_results(
         self,
-        grouped_results: t.Dict[t.Optional[str], t.List[Result]],
-        include: set[Status] = set((Status.FAILED, Status.ERROR, Status.WARNING)),
+        results: t.List[_TaggedResult],
+        include: t.Set[Status] = set((Status.FAILED, Status.ERROR, Status.WARNING)),
         *,
         render_context: bool = True,
         render_description: bool = True,
@@ -1087,16 +1168,13 @@ class Runner:
             render_message: Whether to render test result messages.
         """
 
-        if not grouped_results:
+        if not results:
             return
 
-        # Get all tests that match the included statuses
-        all_included_tests = []
-        for group, group_tests in grouped_results.items():
-            all_included_tests.extend([(group, r) for r in group_tests if r.status in include])
+        all_included_results = [tagged_result for tagged_result in results if tagged_result.result.status in include]
 
         # If no tests match the included statuses, return early
-        if not all_included_tests:
+        if not all_included_results:
             return
 
         console = Console()
@@ -1104,19 +1182,20 @@ class Runner:
         self._print_status_header(console, include)
         console.print()
 
-        for idx, (group, test_result) in enumerate(all_included_tests):
+        for idx, (group, test_results) in enumerate(_TaggedResult.group_by_group(all_included_results)):
             group_name = group or self._DEFAULT_TEST_GROUP
-            self._print_test_result(
-                console,
-                test_result,
-                group_name,
-                idx,
-                render_message,
-                render_description,
-                render_traceback,
-                render_context,
-            )
-            console.print()
+            for result in test_results:
+                self._print_test_result(
+                    console,
+                    result.result,
+                    group_name,
+                    idx,
+                    render_message,
+                    render_description,
+                    render_traceback,
+                    render_context,
+                )
+                console.print()
 
     def _print_status_header(self, console: Console, include: set[Status]) -> None:
         """Print header showing which statuses are included.
