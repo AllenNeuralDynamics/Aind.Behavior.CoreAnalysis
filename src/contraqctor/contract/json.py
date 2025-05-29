@@ -33,6 +33,22 @@ class Json(DataStream[dict[str, str], JsonParams]):
 
     Args:
         DataStream: Base class for data stream providers.
+        
+    Examples:
+        ```python
+        from contraqctor.contract.json import Json, JsonParams
+        
+        # Create and load a JSON stream
+        config_stream = Json(
+            "config", 
+            reader_params=JsonParams(path="config/settings.json")
+        )
+        config_stream.load()
+        
+        # Access the data
+        config = config_stream.data
+        api_key = config.get("api_key")
+        ```
     """
 
     @staticmethod
@@ -44,6 +60,15 @@ class Json(DataStream[dict[str, str], JsonParams]):
 
         Returns:
             dict: Dictionary containing the parsed JSON data.
+            
+        Examples:
+            ```python
+            from contraqctor.contract.json import Json, JsonParams
+            
+            params = JsonParams(path="user_profile.json")
+            data = Json._reader(params)
+            username = data.get("username")
+            ```
         """
         with open(params.path, "r", encoding=params.encoding) as file:
             data = json.load(file)
@@ -60,6 +85,23 @@ class MultiLineJson(DataStream[list[dict[str, str]], JsonParams]):
 
     Args:
         DataStream: Base class for data stream providers.
+        
+    Examples:
+        ```python
+        from contraqctor.contract.json import MultiLineJson, JsonParams
+        
+        # Create and load a multi-line JSON stream
+        logs_stream = MultiLineJson(
+            "server_logs", 
+            reader_params=JsonParams(path="logs/server_logs.jsonl")
+        )
+        logs_stream.load()
+        
+        # Process log entries
+        for entry in logs_stream.data:
+            if entry.get("level") == "ERROR":
+                print(f"Error: {entry.get('message')}")
+        ```
     """
 
     @staticmethod
@@ -71,6 +113,25 @@ class MultiLineJson(DataStream[list[dict[str, str]], JsonParams]):
 
         Returns:
             list: List of dictionaries, each containing a parsed JSON object from one line.
+            
+        Examples:
+            Using the reader directly to process events:
+            
+            ```python
+            from contraqctor.contract.json import MultiLineJson, JsonParams
+            
+            # Set up parameters
+            params = JsonParams(path="events/user_clicks.jsonl")
+            
+            # Read the JSON directly
+            events = MultiLineJson._reader(params)
+            
+            # Calculate statistics
+            clicks_by_user = {}
+            for event in events:
+                user_id = event.get("user_id")
+                clicks_by_user[user_id] = clicks_by_user.get(user_id, 0) + 1
+            ```
         """
         with open(params.path, "r", encoding=params.encoding) as file:
             data = [json.loads(line) for line in file]
@@ -92,6 +153,19 @@ class PydanticModelParams(FilePathBaseParam, Generic[_TModel]):
     Attributes:
         model: Pydantic model class to use for parsing JSON data.
         encoding: Character encoding for the JSON file. Defaults to UTF-8.
+        
+    Examples:
+        ```python
+        from pydantic import BaseModel
+        from contraqctor.contract.json import PydanticModelParams
+        
+        class User(BaseModel):
+            user_id: str
+            name: str
+            active: bool = True
+            
+        params = PydanticModelParams(path="users/profile.json", model=User)
+        ```
     """
 
     model: Type[_TModel]
@@ -105,6 +179,23 @@ class PydanticModel(DataStream[_TModel, PydanticModelParams[_TModel]]):
 
     Args:
         DataStream: Base class for data stream providers.
+        
+    Examples:
+        ```python
+        from pydantic import BaseModel
+        from contraqctor.contract.json import PydanticModel, PydanticModelParams
+        
+        class ServerConfig(BaseModel):
+            host: str
+            port: int
+            debug: bool = False
+            
+        params = PydanticModelParams(path="config/server.json", model=ServerConfig)
+        
+        config_stream = PydanticModel("server_config", reader_params=params).load()
+        server_config = config_stream.data
+        print(f"Server: {server_config.host}:{server_config.port}")
+        ```
     """
 
     @staticmethod
@@ -116,6 +207,36 @@ class PydanticModel(DataStream[_TModel, PydanticModelParams[_TModel]]):
 
         Returns:
             _TModel: Instance of the specified Pydantic model populated from JSON data.
+            
+        Examples:
+            Using the reader directly with a model:
+            
+            ```python
+            from pydantic import BaseModel
+            from datetime import datetime
+            from contraqctor.contract.json import PydanticModel, PydanticModelParams
+            
+            # Define a model for an experiment
+            class Experiment(BaseModel):
+                id: str
+                name: str
+                start_date: datetime
+                completed: bool
+                parameters: dict
+            
+            # Set up parameters
+            params = PydanticModelParams(
+                path="experiments/exp_001.json",
+                model=Experiment
+            )
+            
+            # Read and validate the JSON as an Experiment
+            experiment = PydanticModel._reader(params)
+            
+            # Work with the validated model
+            if experiment.completed:
+                print(f"Experiment {experiment.name} completed on {experiment.start_date}")
+            ```
         """
         with open(params.path, "r", encoding=params.encoding) as file:
             return params.model.model_validate_json(file.read())
@@ -135,6 +256,28 @@ class ManyPydanticModelParams(FilePathBaseParam, Generic[_TModel]):
         encoding: Character encoding for the JSON file. Defaults to UTF-8.
         index: Optional column name to set as the DataFrame index.
         column_names: Optional dictionary mapping original column names to new names.
+        
+    Examples:
+        Defining parameters to load multiple models:
+        
+        ```python
+        from pydantic import BaseModel
+        from contraqctor.contract.json import ManyPydanticModelParams
+        
+        # Define a Pydantic model for log entries
+        class LogEntry(BaseModel):
+            timestamp: str
+            level: str
+            message: str
+            
+        # Create parameters for loading log entries
+        params = ManyPydanticModelParams(
+            path="logs/server_logs.json",
+            model=LogEntry,
+            index="timestamp",
+            column_names={"level": "log_level", "message": "log_message"}
+        )
+        ```
     """
 
     model: Type[_TModel]
@@ -151,6 +294,26 @@ class ManyPydanticModel(DataStream[pd.DataFrame, ManyPydanticModelParams[_TModel
 
     Args:
         DataStream: Base class for data stream providers.
+        
+    Examples:
+        Loading server logs into a DataFrame:
+        
+        ```python
+        from contraqctor.contract.json import ManyPydanticModel, ManyPydanticModelParams
+        
+        # Create and load the data stream
+        logs_stream = ManyPydanticModel(
+            "server_logs_df", 
+            reader_params=params
+        )
+        logs_stream.load()
+        
+        # Access the logs as a DataFrame
+        logs_df = logs_stream.data
+        
+        # Analyze the logs
+        error_logs = logs_df[logs_df["log_level"] == "ERROR"]
+        ```
     """
 
     @staticmethod
@@ -162,6 +325,27 @@ class ManyPydanticModel(DataStream[pd.DataFrame, ManyPydanticModelParams[_TModel
 
         Returns:
             pd.DataFrame: DataFrame containing data from multiple model instances.
+            
+        Examples:
+            Using the reader directly to create a DataFrame:
+            
+            ```python
+            from contraqctor.contract.json import ManyPydanticModel, ManyPydanticModelParams
+            
+            # Set up parameters
+            params = ManyPydanticModelParams(
+                path="data/transactions.json",
+                model=Transaction,
+                index="transaction_id",
+                column_names={"amount": "transaction_amount"}
+            )
+            
+            # Read the JSON lines and create the DataFrame
+            transactions_df = ManyPydanticModel._reader(params)
+            
+            # Perform analysis
+            total_amount = transactions_df["transaction_amount"].sum()
+            ```
         """
         with open(params.path, "r", encoding=params.encoding) as file:
             model_ls = pd.DataFrame([params.model.model_validate_json(line).model_dump() for line in file])
@@ -186,6 +370,20 @@ class SoftwareEventsParams(ManyPydanticModelParams):
         encoding: Character encoding for the JSON file. Defaults to UTF-8.
         index: Optional column name to set as the DataFrame index.
         column_names: Optional dictionary mapping original column names to new names.
+        
+    Examples:
+        Defining parameters for loading software events:
+        
+        ```python
+        from contraqctor.contract.json import SoftwareEventsParams
+        
+        # Create parameters for software events
+        params = SoftwareEventsParams(
+            path="events/software_events.json",
+            index="event_id",
+            column_names={"timestamp": "event_time"}
+        )
+        ```
     """
 
     model: Type[aind_behavior_services.data_types.SoftwareEvent] = dataclasses.field(
@@ -204,6 +402,32 @@ class SoftwareEvents(ManyPydanticModel[aind_behavior_services.data_types.Softwar
 
     Args:
         ManyPydanticModel: Base class for multi-model data stream providers.
+        
+    Examples:
+        Analyzing software events data:
+        
+        ```python
+        from contraqctor.contract.json import SoftwareEvents, SoftwareEventsParams
+        
+        # Create parameters for software events
+        params = SoftwareEventsParams(
+            path="events/software_events.json",
+            index="event_id"
+        )
+        
+        # Create and load the software events stream
+        events_stream = SoftwareEvents(
+            "software_events",
+            reader_params=params
+        )
+        events_stream.load()
+        
+        # Access the events data
+        events_df = events_stream.data
+        
+        # Perform analysis, e.g., count events by type
+        event_counts = events_df["event_type"].value_counts()
+        ```
     """
 
     make_params = SoftwareEventsParams
