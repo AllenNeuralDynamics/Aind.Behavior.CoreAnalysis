@@ -31,12 +31,12 @@ def print_data_stream_tree(
         ```python
         from contraqctor.contract import Dataset, csv, json
         from contraqctor.contract.utils import print_data_stream_tree
-        
+
         # Create a dataset with streams
         csv_stream = csv.Csv("data", reader_params=csv.CsvParams(path="data.csv"))
         json_stream = json.Json("config", reader_params=json.JsonParams(path="config.json"))
         dataset = Dataset("experiment", [csv_stream, json_stream], version="1.0.0")
-        
+
         # Print the tree
         tree = print_data_stream_tree(dataset)
         print(tree)

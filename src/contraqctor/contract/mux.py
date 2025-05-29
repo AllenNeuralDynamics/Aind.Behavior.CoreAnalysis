@@ -56,15 +56,15 @@ class MapFromPaths(DataStreamCollectionBase[_TDataStream, MapFromPathsParams]):
 
     Args:
         DataStreamCollectionBase: Base class for data stream collection providers.
-        
+
     Examples:
         ```python
         from contraqctor.contract import mux, text
-        
+
         # Define a factory function for TextParams
         def create_text_params(file_path):
             return text.TextParams(path=file_path)
-        
+
         # Create and load a text file collection
         params = mux.MapFromPathsParams(
             paths=["documents/"],
@@ -72,7 +72,7 @@ class MapFromPaths(DataStreamCollectionBase[_TDataStream, MapFromPathsParams]):
             inner_data_stream=text.Text,
             inner_param_factory=create_text_params
         )
-        
+
         docs = mux.MapFromPaths("documents", reader_params=params).load()
         readme = docs["readme"].data
         ```
@@ -92,21 +92,21 @@ class MapFromPaths(DataStreamCollectionBase[_TDataStream, MapFromPathsParams]):
 
         Raises:
             ValueError: If duplicate file stems (names without extensions) are found.
-            
+
         Examples:
             ```python
             from contraqctor.contract import mux, csv
-            
+
             def make_csv_params(file_path):
                 return csv.CsvParams(path=file_path)
-                
+
             params = mux.MapFromPathsParams(
                 paths=["data/sensors/"],
                 include_glob_pattern=["*.csv"],
                 inner_data_stream=csv.Csv,
                 inner_param_factory=make_csv_params
             )
-            
+
             # Get streams directly
             streams = mux.MapFromPaths._reader(params)
             ```

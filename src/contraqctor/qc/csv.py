@@ -12,17 +12,17 @@ class CsvTestSuite(Suite):
 
     Attributes:
         data_stream: The CSV data stream to test.
-        
+
     Examples:
         ```python
         from contraqctor.contract.csv import Csv, CsvParams
         from contraqctor.qc.csv import CsvTestSuite
         from contraqctor.qc.base import Runner
-        
+
         # Create and load a CSV data stream
         params = CsvParams(path="data/measurements.csv")
         csv_stream = Csv("measurements", reader_params=params).load()
-        
+
         # Create and run the test suite
         suite = CsvTestSuite(csv_stream)
         runner = Runner().add_suite(suite)
