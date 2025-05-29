@@ -27,15 +27,23 @@ def print_data_stream_tree(
     Returns:
         str: A formatted string representing the data stream tree.
 
-    Example:
-        ```
-        print(print_data_stream_tree(dataset))
+    Examples:
+        ```python
+        from contraqctor.contract import Dataset, csv, json
+        from contraqctor.contract.utils import print_data_stream_tree
+        
+        # Create a dataset with streams
+        csv_stream = csv.Csv("data", reader_params=csv.CsvParams(path="data.csv"))
+        json_stream = json.Json("config", reader_params=json.JsonParams(path="config.json"))
+        dataset = Dataset("experiment", [csv_stream, json_stream], version="1.0.0")
+        
+        # Print the tree
+        tree = print_data_stream_tree(dataset)
+        print(tree)
         # Output:
-        # 📂 dataset
-        # ├── 📄 stream1
-        # └── 📂 collection1
-        #     ├── 📄 nested_stream1
-        #     └── 📄 nested_stream2
+        # 📂 experiment
+        # ├── 📄 data
+        # └── 📄 config
         ```
     """
     icon_map = {

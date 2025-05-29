@@ -31,6 +31,20 @@ class Csv(DataStream[pd.DataFrame, CsvParams]):
 
     Args:
         DataStream: Base class for data stream providers.
+        
+    Examples:
+        ```python
+        from contraqctor.contract.csv import Csv, CsvParams
+        
+        # Create and load a CSV stream
+        params = CsvParams(path="data/european_data.csv", delimiter=";")
+        csv_stream = Csv("measurements", reader_params=params)
+        csv_stream.load()
+        
+        # Access the DataFrame
+        df = csv_stream.data
+        filtered = df[df["temperature"] > 25]
+        ```
     """
 
     @staticmethod

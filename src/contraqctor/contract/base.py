@@ -158,6 +158,16 @@ class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
 
         Raises:
             NotImplementedError: If the data stream does not support child access.
+            
+        Examples:
+            ```python
+            # Access stream in a collection
+            collection = data_collection.load()
+            temp_stream = collection.at("temperature")
+            
+            # Or using dictionary-style syntax
+            humidity_stream = collection["humidity"]
+            ```
         """
         raise NotImplementedError("This method is not implemented for DataStream.")
 
@@ -202,6 +212,20 @@ class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
 
         Returns:
             Self: The data stream instance for method chaining.
+            
+        Examples:
+            ```python
+            from contraqctor.contract import csv
+            
+            # Create and load a CSV stream
+            params = csv.CsvParams(path="data/measurements.csv")
+            csv_stream = csv.Csv("measurements", reader_params=params)
+            csv_stream.load()
+            
+            # Access the data
+            df = csv_stream.data
+            print(f"Loaded {len(df)} rows")
+            ```
         """
         self._data = self.read()
         return self
@@ -245,6 +269,16 @@ class DataStream(abc.ABC, Generic[_typing.TData, _typing.TReaderParams]):
 
         Raises:
             Exception: If strict is True and an exception occurs during loading.
+            
+        Examples:
+            ```python
+            # Load all streams and handle errors
+            errors = collection.load_all(strict=False)
+            
+            if errors:
+                for stream, error in errors:
+                    print(f"Error loading {stream.name}: {error}")
+            ```
         """
         self.load()
         exceptions = []
@@ -424,6 +458,22 @@ class DataStreamCollection(DataStreamCollectionBase[DataStream, _typing.UnsetPar
         name: Name identifier for the collection.
         data_streams: List of child data streams to include.
         description: Optional description of the collection.
+        
+    Examples:
+        ```python
+        from contraqctor.contract import csv, text, DataStreamCollection
+        
+        # Create streams
+        text_stream = text.Text("readme", reader_params=text.TextParams(path="README.md"))
+        csv_stream = csv.Csv("data", reader_params=csv.CsvParams(path="data.csv"))
+        
+        # Create the collection
+        collection = DataStreamCollection("project_files", [text_stream, csv_stream])
+        
+        # Load and use
+        collection.load_all()
+        readme_content = collection["readme"].data
+        ```
     """
 
     @override
@@ -502,6 +552,22 @@ class DataStreamCollection(DataStreamCollectionBase[DataStream, _typing.UnsetPar
 
         Raises:
             KeyError: If a stream with the same name already exists.
+            
+        Examples:
+            ```python
+            from contraqctor.contract import json, DataStreamCollection
+            
+            # Create an empty collection
+            collection = DataStreamCollection("api_data", [])
+            
+            # Add streams
+            collection.add_stream(
+                json.Json("config", reader_params=json.JsonParams(path="config.json"))
+            )
+            
+            # Load the data
+            collection.load_all()
+            ```
         """
         if not self.has_data:
             self._data = [stream]
@@ -568,6 +634,31 @@ class Dataset(DataStreamCollection):
         data_streams: List of data streams to include in the dataset.
         version: Semantic version string or Version object. Defaults to "0.0.0".
         description: Optional description of the dataset.
+        
+    Examples:
+        ```python
+        from contraqctor.contract import text, csv, Dataset
+        
+        # Create streams
+        text_stream = text.Text("notes", reader_params=text.TextParams(path="notes.txt"))
+        csv_stream = csv.Csv("data", reader_params=csv.CsvParams(path="data.csv"))
+        
+        # Create a versioned dataset
+        dataset = Dataset(
+            "experiment_results", 
+            [text_stream, csv_stream],
+            version="1.2.3"
+        )
+        
+        # Load the dataset
+        dataset.load_all(strict=True)
+        
+        # Access streams
+        txt = dataset["notes"].data
+        csv_data = dataset["data"].data
+        
+        print(f"Dataset version: {dataset.version}")
+        ```
     """
 
     @override

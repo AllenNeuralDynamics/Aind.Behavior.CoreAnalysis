@@ -350,6 +350,23 @@ class HarpDevice(DataStreamCollectionBase[HarpRegister, HarpDeviceParams]):
 
     Args:
         DataStreamCollectionBase: Base class for data stream collection providers.
+        
+    Examples:
+        ```python
+        from contraqctor.contract.harp import HarpDevice, HarpDeviceParams, DeviceYmlByWhoAmI
+        
+        # Create and load a device stream
+        params = HarpDeviceParams(
+            path="behavior.harp",
+            device_yml_hint=DeviceYmlByWhoAmI(who_am_i=1216)
+        )
+        
+        behavior = HarpDevice("behavior", reader_params=params).load()
+        
+        # Access registers
+        digital_input = behavior["DigitalInputState"].data
+        adc = behavior["AnalogData"].data
+        ```
     """
 
     make_params = HarpDeviceParams
