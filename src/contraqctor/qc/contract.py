@@ -13,6 +13,27 @@ class ContractTestSuite(Suite):
     Attributes:
         loading_errors: List of tuples containing the data stream and the exception that occurred.
         exclude: Optional list of data streams to exclude from error reporting.
+        
+    Examples:
+        ```python
+        from contraqctor.contract import Dataset
+        from contraqctor.qc.contract import ContractTestSuite
+        from contraqctor.qc.base import Runner
+        
+        # Create and attempt to load a dataset
+        dataset = create_complex_dataset()
+        loading_errors = dataset.load_all(strict=False)
+        
+        # Create test suite to analyze loading errors
+        suite = ContractTestSuite(
+            loading_errors, 
+            exclude=[dataset["optional_stream"]]  # Exclude known problematic stream
+        )
+        
+        # Run tests
+        runner = Runner().add_suite(suite)
+        results = runner.run_all_with_progress()
+        ```
     """
 
     def __init__(

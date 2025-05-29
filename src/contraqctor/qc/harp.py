@@ -24,6 +24,22 @@ class HarpDeviceTestSuite(Suite):
         harp_device: The HarpDevice data stream to test.
         harp_device_commands: Optional HarpDevice data stream with device commands.
         min_core_version: Optional minimum required core version.
+        
+    Examples:
+        ```python
+        from contraqctor.contract.harp import HarpDevice
+        from contraqctor.qc.harp import HarpDeviceTestSuite
+        from contraqctor.qc.base import Runner
+        
+        # Create HarpDevice streams
+        device = HarpDevice("behavior", reader_params=params).load()
+        commands = HarpDevice("behavior_commands", reader_params=command_params).load()
+        
+        # Create and run test suite
+        suite = HarpDeviceTestSuite(device, commands, min_core_version="1.2.0")
+        runner = Runner().add_suite(suite)
+        results = runner.run_all_with_progress()
+        ```
     """
 
     def __init__(
@@ -262,6 +278,23 @@ class HarpHubTestSuite(Suite):
         clock_generator_device: The HARP device acting as the clock generator.
         devices: List of subordinate HARP devices to test.
         read_dump_jitter_threshold_s: Maximum allowed time difference for read dumps.
+        
+    Examples:
+        ```python
+        from contraqctor.contract.harp import HarpDevice
+        from contraqctor.qc.harp import HarpHubTestSuite
+        from contraqctor.qc.base import Runner
+        
+        # Create HarpDevice streams
+        clock_gen = HarpDevice("clock_gen", reader_params=clock_params).load()
+        device1 = HarpDevice("device1", reader_params=params1).load()
+        device2 = HarpDevice("device2", reader_params=params2).load()
+        
+        # Create and run hub test suite
+        suite = HarpHubTestSuite(clock_gen, [device1, device2])
+        runner = Runner().add_suite(suite)
+        results = runner.run_all_with_progress()
+        ```
     """
 
     def __init__(
@@ -396,6 +429,28 @@ class HarpSniffDetectorTestSuite(HarpDeviceTypeTestSuite):
         clipping_thr: Threshold for the clipping detection test.
         sudden_jumps_thr: Threshold for the sudden jumps detection test.
         notch_filter_freq: Frequency (Hz) for the notch filter.
+        
+    Examples:
+        ```python
+        from contraqctor.contract.harp import HarpDevice
+        from contraqctor.qc.harp import HarpSniffDetectorTestSuite
+        from contraqctor.qc.base import Runner
+        
+        # Create and load the sniff detector device
+        device = HarpDevice("sniff", reader_params=params).load()
+        
+        # Create the test suite with custom thresholds
+        suite = HarpSniffDetectorTestSuite(
+            device,
+            quantization_ratio_thr=0.1,
+            clustering_thr=0.05,
+            notch_filter_freq=60  # For 60Hz power
+        )
+        
+        # Run tests
+        runner = Runner().add_suite(suite)
+        results = runner.run_all_with_progress()
+        ```
     """
 
     _WHOAMI = 1401

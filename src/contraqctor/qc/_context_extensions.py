@@ -14,6 +14,26 @@ class ContextExportableObj(t.Generic[TExportable]):
 
     Attributes:
         _obj: The exportable object being wrapped.
+        
+    Examples:
+        ```python
+        import matplotlib.pyplot as plt
+        from contraqctor.qc._context_extensions import ContextExportableObj
+        from contraqctor.qc.base import Suite
+        
+        class VisualizationTestSuite(Suite):
+            def test_create_plot(self):
+                # Create a matplotlib figure
+                fig, ax = plt.subplots()
+                ax.plot([1, 2, 3], [4, 5, 6])
+                ax.set_title("Test Plot")
+                
+                # Add the figure to the test context 
+                context = ContextExportableObj.as_context(fig)
+                
+                # Return test result with the figure in context
+                return self.pass_test(True, "Plot created successfully", context=context)
+        ```
     """
 
     def __init__(self, obj: TExportable) -> None:
@@ -47,6 +67,22 @@ class ContextExportableObj(t.Generic[TExportable]):
         Returns:
             Dict[str, ContextExportableObj]: A dictionary containing the wrapped
             asset under the reserved key.
+            
+        Examples:
+            ```python
+            import matplotlib.pyplot as plt
+            from contraqctor.qc._context_extensions import ContextExportableObj
+            
+            # Create a visualization
+            fig, ax = plt.subplots()
+            ax.plot([1, 2, 3], [4, 5, 6])
+            
+            # Create a context dictionary with the figure
+            context = ContextExportableObj.as_context(fig)
+            
+            # The context can now be passed to test result methods
+            return self.pass_test(True, "Analysis succeeded", context=context)
+            ```
         """
         return {ASSET_RESERVED_KEYWORD: ContextExportableObj(asset)}
 

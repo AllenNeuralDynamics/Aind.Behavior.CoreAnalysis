@@ -27,6 +27,28 @@ def allow_null_as_pass(value: bool = True):
 
     Args:
         value: True to allow null results as passing, False otherwise.
+        
+    Examples:
+        ```python
+        from contraqctor.qc.base import allow_null_as_pass, Runner
+        
+        # Create a test suite with methods that return None
+        class SimpleTestSuite(Suite):
+            def test_basic_check(self):
+                # This method returns None, which would normally be an error
+                print("Performing a check")
+                # No explicit return
+        
+        # Run with allow_null_as_pass to treat None returns as passing
+        suite = SimpleTestSuite()
+        runner = Runner().add_suite(suite)
+        
+        with allow_null_as_pass():
+            # None returns will be treated as passing tests
+            results = runner.run_all_with_progress()
+            
+        # Outside the context manager, None returns would cause errors
+        ```
     """
     token = _allow_null_as_pass_ctx.set(value)
     try:
@@ -44,6 +66,29 @@ def elevated_skips(value: bool = True):
 
     Args:
         value: True to elevate skipped tests to failures, False otherwise.
+        
+    Examples:
+        ```python
+        from contraqctor.qc.base import elevated_skips, Runner
+        
+        # Create a test suite with some skipped tests
+        class FeatureTestSuite(Suite):
+            def test_implemented_feature(self):
+                return self.pass_test(True, "Feature works")
+                
+            def test_unimplemented_feature(self):
+                return self.skip_test("Feature not yet implemented")
+        
+        # Run with elevated_skips to fail when tests are skipped
+        suite = FeatureTestSuite()
+        runner = Runner().add_suite(suite)
+        
+        with elevated_skips():
+            # Skipped tests will be treated as failures
+            results = runner.run_all_with_progress()
+            
+        # Without the context manager, skips are just marked as skipped
+        ```
     """
     token = _elevate_skippable.set(value)
     try:
@@ -61,6 +106,33 @@ def elevated_warnings(value: bool = True):
 
     Args:
         value: True to elevate warnings to failures, False otherwise.
+        
+    Examples:
+        ```python
+        from contraqctor.qc.base import elevated_warnings, Runner
+        
+        # Create a test suite with warning conditions
+        class PerformanceTestSuite(Suite):
+            def test_response_time(self):
+                response_time = measure_response()
+                
+                if response_time < 100:
+                    return self.pass_test(response_time, "Response time acceptable")
+                elif response_time < 200:
+                    # This would normally be a warning
+                    return self.warn_test(response_time, "Response time degraded")
+                else:
+                    return self.fail_test(response_time, "Response time unacceptable")
+        
+        # Run with elevated_warnings to fail on warnings
+        suite = PerformanceTestSuite()
+        runner = Runner().add_suite(suite)
+        
+        with elevated_warnings():
+            # Warning results will be treated as failures
+            # Useful in CI/CD pipelines where warnings should trigger failures
+            results = runner.run_all_with_progress()
+        ```
     """
     token = _elevate_warning.set(value)
     try:
@@ -164,6 +236,29 @@ def implicit_pass(func: t.Callable[..., t.Any]) -> t.Callable[..., Result]:
 
     Raises:
         TypeError: If the decorated function is not a method of a Suite object.
+        
+    Examples:
+        ```python
+        from contraqctor.qc.base import Suite, implicit_pass
+        
+        class SimplifiedTestSuite(Suite):
+            # Regular test method that explicitly returns a Result object
+            def test_regular_approach(self):
+                value = 42
+                return self.pass_test(value, "Explicitly created pass result")
+            
+            # Using the decorator to simplify - just return the value
+            @implicit_pass
+            def test_implicit_approach(self):
+                # This will automatically be wrapped in a passing Result
+                return 42
+                
+            # The decorator handles different return types
+            @implicit_pass
+            def test_with_dict(self):
+                # This dictionary will be wrapped in a passing Result
+                return {"status": "ok", "value": 100}
+        ```
     """
 
     @functools.wraps(func)
@@ -193,6 +288,33 @@ class Suite(abc.ABC):
     Provides the core functionality for defining, running, and reporting on tests.
     All test suites should inherit from this class and implement test methods
     that start with 'test'.
+    
+    Examples:
+        ```python
+        from contraqctor.qc.base import Suite
+        
+        class MyTestSuite(Suite):
+            \"\"\"Test suite for validating my component.\"\"\"
+            
+            def __init__(self, component):
+                self.component = component
+                
+            def test_has_required_property(self):
+                if hasattr(self.component, "required_property"):
+                    return self.pass_test(True, "Component has required property")
+                else:
+                    return self.fail_test(False, "Component is missing required property")
+                    
+            def test_performs_calculation(self):
+                try:
+                    result = self.component.calculate(10)
+                    if result == 20:
+                        return self.pass_test(result, "Calculation correct")
+                    else:
+                        return self.fail_test(result, f"Expected 20 but got {result}")
+                except Exception as e:
+                    return self.fail_test(None, f"Calculation failed: {str(e)}")
+        ```
     """
 
     def get_tests(self) -> t.Generator[ITest, None, None]:
@@ -885,6 +1007,28 @@ class Runner:
     Attributes:
         suites: Dictionary mapping group names to lists of test suites.
         _results: Optional dictionary of collected test results by group.
+        
+    Examples:
+        ```python
+        from contraqctor.qc.base import Runner
+        
+        # Create test suites
+        suite1 = MyTestSuite(component1)
+        suite2 = AnotherTestSuite(component2)
+        suite3 = YetAnotherTestSuite(component2) 
+        
+        # Create runner and add suites with group names
+        runner = Runner()
+        runner.add_suite(suite1, "Component Tests")
+        runner.add_suite(suite2, "Integration Tests")
+        runner.add_suite(suite3, "Integration Tests")
+
+        # Run all tests with progress display
+        results = runner.run_all_with_progress()
+        
+        # Access results by group
+        component_results = results["Component Tests"]
+        ```
     """
 
     _DEFAULT_TEST_GROUP = "Ungrouped"
@@ -926,6 +1070,19 @@ class Runner:
 
         Returns:
             Runner: Self for method chaining.
+            
+        Examples:
+            ```python
+            runner = Runner()
+            
+            # Add a suite without a group
+            runner.add_suite(BasicSuite())
+            
+            # Add suites with named groups for organization
+            runner.add_suite(DataSuite(), "Data Validation")
+            runner.add_suite(VisualizationSuite(), "Data Validation")
+            runner.add_suite(ApiSuite(), "API Tests")
+            ```
         """
         self._update_suites(suite, group)
         return self
@@ -1102,6 +1259,29 @@ class Runner:
 
         Returns:
             Dict[Optional[str], List[Result]]: Results grouped by test group name.
+            
+        Examples:
+            ```python
+            runner = Runner()
+            runner.add_suite(DataValidationSuite(), "Validation")
+            runner.add_suite(PerformanceSuite(), "Performance")
+            
+            # Run all tests with progress display and complete output
+            results = runner.run_all_with_progress()
+            
+            # Run with simplified output (no context or traceback)
+            results = runner.run_all_with_progress(
+                render_context=False, 
+                render_traceback=False
+            )
+            
+            # Check if any tests failed
+            all_passed = all(
+                result.status == Status.PASSED 
+                for group_results in results.values() 
+                for result in group_results
+            )
+            ```
         """
 
         collected_tests = self._collect_tests()

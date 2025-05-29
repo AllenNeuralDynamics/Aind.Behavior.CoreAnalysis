@@ -25,6 +25,29 @@ class CameraTestSuite(Suite):
         clock_jitter_s: Maximum allowed time difference between frame timestamps, in seconds.
         start_time_s: Optional expected start time for validation, in seconds.
         stop_time_s: Optional expected stop time for validation, in seconds.
+
+    Examples:
+        ```python
+        from contraqctor.contract.camera import Camera, CameraParams
+        from contraqctor.qc.camera import CameraTestSuite
+        from contraqctor.qc.base import Runner
+
+        # Create and load a camera data stream
+        params = CameraParams(path="recordings/session1/")
+        camera_stream = Camera("front_camera", reader_params=params).load()
+
+        # Create test suite with validation parameters
+        suite = CameraTestSuite(
+            camera_stream,
+            expected_fps=30,
+            start_time_s=10.0,
+            stop_time_s=310.0
+        )
+
+        # Run tests
+        runner = Runner().add_suite(suite)
+        results = runner.run_all_with_progress()
+        ```
     """
 
     _expected_columns = {"ReferenceTime", "CameraFrameNumber", "CameraFrameTime"}
