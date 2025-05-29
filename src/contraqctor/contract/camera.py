@@ -50,11 +50,11 @@ class CameraData:
 
         Yields:
             VideoCapture: OpenCV VideoCapture object for the video file.
-            
+
         Examples:
             ```python
             import cv2
-            
+
             # Process video frames
             with camera_data.as_video_capture() as cap:
                 ret, frame = cap.read()
@@ -113,19 +113,19 @@ class Camera(DataStream[CameraData, CameraParams]):
 
     Args:
         DataStream: Base class for data stream providers.
-        
+
     Examples:
         ```python
         from contraqctor.contract.camera import Camera, CameraParams
-        
+
         # Create and load a camera stream
         params = CameraParams(path="recordings/experiment_1/camera1/")
         cam_stream = Camera("front_view", reader_params=params).load()
-        
+
         # Access the data
         camera_data = cam_stream.data
         metadata_df = camera_data.metadata
-        
+
         # Check video properties
         if camera_data.has_video:
             print(f"Dimensions: {camera_data.video_frame_size}")

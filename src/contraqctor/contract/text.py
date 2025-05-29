@@ -24,15 +24,15 @@ class Text(DataStream[str, TextParams]):
 
     Args:
         DataStream: Base class for data stream providers.
-        
+
     Examples:
         ```python
         from contraqctor.contract.text import Text, TextParams
-        
+
         # Create and load a text stream
         params = TextParams(path="README.md")
         readme_stream = Text("readme", reader_params=params).load()
-        
+
         # Access the content
         content = readme_stream.data
         ```
