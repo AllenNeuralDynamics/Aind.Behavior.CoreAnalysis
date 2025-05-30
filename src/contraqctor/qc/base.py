@@ -9,6 +9,7 @@ import typing as t
 from contextlib import contextmanager
 from enum import Enum, auto
 
+import rich.markup
 import rich.progress
 from rich.console import Console
 from rich.syntax import Syntax
@@ -1291,13 +1292,16 @@ class Runner:
         total_test_count = len(collected_tests)
 
         suite_name_lengths = [len(suite.name) for suite, _ in _TaggedTest.group_by_suite(collected_tests)]
-        suite_name_width = max(suite_name_lengths) if suite_name_lengths else 10
-
+        # we sum 2 to account for brackets
+        group_lengths = [
+            len(group) + 2 for group, _ in _TaggedTest.group_by_group(collected_tests) if group is not None
+        ]
+        full_name_width = max(suite_name_lengths + group_lengths) if suite_name_lengths else 10
         test_name_width = 20  # To render the test name during progress
         bar_width = 20
 
         progress_format = [
-            f"[progress.description]{{task.description:<{suite_name_width + test_name_width + 5}}}",
+            f"[progress.description]{{task.description:<{full_name_width + test_name_width + 5}}}",
             rich.progress.BarColumn(),
             "[progress.percentage]{task.percentage:>3.0f}%",
             "•",
@@ -1306,14 +1310,16 @@ class Runner:
 
         with rich.progress.Progress(*progress_format) as progress:
             total_task = progress.add_task(
-                "[bold green]TOTAL PROGRESS".ljust(suite_name_width + test_name_width + 5), total=total_test_count
+                "[bold green]TOTAL PROGRESS".ljust(full_name_width + test_name_width + 5), total=total_test_count
             )
 
             collected_results: t.List[_TaggedResult] = []
-
             for group, tests_in_group in _TaggedTest.group_by_group(collected_tests):
+                _title = (
+                    rich.markup.escape(f"[{group}]") if group else rich.markup.escape(f"[{self._DEFAULT_TEST_GROUP}]")
+                )
                 group_task = progress.add_task(
-                    f"\n[honeydew2][{group or self._DEFAULT_TEST_GROUP}]".ljust(suite_name_width + test_name_width + 5),
+                    f"[honeydew2]{_title}".ljust(full_name_width + test_name_width + 5),
                     total=len(tests_in_group),
                 )
                 for suite, tests_in_suite in _TaggedTest.group_by_suite(tests_in_group):
@@ -1321,7 +1327,7 @@ class Runner:
                         progress,
                         suite,
                         [t.test for t in tests_in_suite],
-                        suite_name_width,
+                        full_name_width,
                         test_name_width,
                         total_task,
                         group_task,
@@ -1337,9 +1343,8 @@ class Runner:
                     ]
                     group_stats = ResultsStatistics.from_results(group_results)
                     group_status_bar = self._render_status_bar(group_stats, bar_width)
-                    _title = f"{group}" if group else self._DEFAULT_TEST_GROUP
-                    padding_width = max(0, suite_name_width - len(_title))
-                    group_line = f"\n[honeydew2][{_title}]{' ' * padding_width} | {group_status_bar} | {group_stats.get_status_summary()}"
+                    padding_width = max(0, full_name_width - len(self._rich_unscape(_title)))
+                    group_line = f"[honeydew2]{_title}{' ' * padding_width} | {group_status_bar} | {group_stats.get_status_summary()}"
                     progress.update(group_task, description=group_line)
 
             if total_test_count > 0:
@@ -1350,7 +1355,7 @@ class Runner:
 
                 _title = "TOTAL PROGRESS"
                 # Fix: Use max() to ensure padding width is never negative
-                padding_width = max(0, suite_name_width - len(_title))
+                padding_width = max(0, full_name_width - len(_title))
                 total_line = f"[bold green]{_title}{' ' * padding_width} | {total_status_bar} | {total_stats.get_status_summary()}"
                 progress.update(total_task, description=total_line)
 
@@ -1368,6 +1373,18 @@ class Runner:
         for group, grouped_results in _TaggedResult.group_by_group(collected_results):
             out[group] = [tagged_result.result for tagged_result in grouped_results]
         return out
+
+    @staticmethod
+    def _rich_unscape(value: str) -> str:
+        """Unescape rich markup in a string.
+
+        Args:
+            value: String containing rich markup to unescape.
+
+        Returns:
+            str: Unescaped string.
+        """
+        return value.replace(r"\[", "[").replace(r"\]", "]")
 
     def _print_results(
         self,
@@ -1466,8 +1483,9 @@ class Runner:
         color = STATUS_COLOR[test_result.status]
 
         # Print header
+        group_name = rich.markup.escape(f"[{group_name}]")
         console.print(
-            f"[bold {color}]{idx}. [{group_name}] {test_result.suite_name}.{test_result.test_name}[/bold {color}]"
+            f"[bold {color}]{idx}. {group_name} {test_result.suite_name}.{test_result.test_name}[/bold {color}]"
         )
 
         console.print(f"[{color}]Result:[/{color}] {test_result.result}")
